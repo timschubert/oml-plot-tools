@@ -342,6 +342,7 @@ def main():
     if "-t" in options:
         common.oml_plot_clock(data)
 
+    plt.tight_layout()
     plt.show()
 
 

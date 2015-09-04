@@ -1,10 +1,41 @@
 # -*- coding:utf-8 -*-
 
+# This file is a part of IoT-LAB oml-plot-tools
+# Copyright (C) 2015 INRIA (Contact: admin@iot-lab.info)
+# Contributor(s) : see AUTHORS file
+#
+# This software is governed by the CeCILL license under French law
+# and abiding by the rules of distribution of free software.  You can  use,
+# modify and/ or redistribute the software under the terms of the CeCILL
+# license as circulated by CEA, CNRS and INRIA at the following URL
+# http://www.cecill.info.
+#
+# As a counterpart to the access to the source code and  rights to copy,
+# modify and redistribute granted by the license, users are provided only
+# with a limited warranty  and the software's author,  the holder of the
+# economic rights,  and the successive licensors  have only  limited
+# liability.
+#
+# The fact that you are presently reading this means that you have had
+# knowledge of the CeCILL license and that you accept its terms.
+
+
 """ Common tests functions """
 
+import os
 import sys
 import mock
 from cStringIO import StringIO
+import matplotlib.pyplot as plt
+import math
+from PIL import Image
+
+TEST_DIR = os.path.dirname(__file__)
+
+
+def test_file_path(*args):
+    """ Test file path """
+    return os.path.join(TEST_DIR, *args)
 
 
 def help_main_and_doc(module, help_opt='--help'):
@@ -32,7 +63,36 @@ def help_main_and_doc(module, help_opt='--help'):
     return help_msg, help_doc
 
 
-def unittest_help_as_doc(unittest_instance, module, *args, **kwargs):
+def utest_help_as_doc(testcase_instance, module, *args, **kwargs):
     """ Run help_as_doc as unittest test """
     help_msg, help_doc = help_main_and_doc(module, *args, **kwargs)
-    unittest_instance.assertEqual(help_msg, help_doc)
+    testcase_instance.assertEqual(help_msg, help_doc)
+
+
+def compare_images(ref_img, tmp_img):
+    """ Compare two images using PIL:
+    :returns: root-mean-square of the two images
+
+    # http://stackoverflow.com/a/1927681/395687 """
+    ref_h = Image.open(ref_img).histogram()
+    tmp_h = Image.open(tmp_img).histogram()
+    rms = math.sqrt(sum((a-b)**2 for a, b in zip(ref_h, tmp_h))/len(ref_h))
+    return rms
+
+
+def utest_plot_and_compare(testcase, ref_img):
+    """ Plot image and compare files.
+    Keep file if they differ """
+    tmp_img = os.path.join('/tmp', os.path.basename(ref_img))
+
+    plt.tight_layout()
+    plt.savefig(tmp_img)
+
+    # Check files
+    rms = compare_images(ref_img, tmp_img)
+
+    msg = '%s != %s: Root-mean-square == %f != 0.0' % (ref_img, tmp_img, rms)
+    testcase.assertEqual(0.0, rms, msg=msg)
+
+    # Cleanup on success
+    os.remove(tmp_img)

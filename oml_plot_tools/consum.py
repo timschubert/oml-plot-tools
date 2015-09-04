@@ -50,12 +50,20 @@ MEASURES_D = common.measures_dict(
     ('current', float, 'Current (A)'),
 )
 
+
 def usage():
     """Usage command print """
     print __doc__
 
 
-def oml_plot_conso(data, title, meas_tuples):
+def oml_load(filename, s_beg=0, s_end=-1):
+    """ Load consumption oml file """
+    data = common.oml_load(filename, 'consumption', MEASURES_D.values())
+    data = data[s_beg:s_end]
+    return data
+
+
+def oml_plot(data, title, meas_tuples):
     """ Plot consumption value for 'meas_tuples'
 
     :param data: numpy array returned by oml_read
@@ -73,7 +81,29 @@ def oml_plot_conso(data, title, meas_tuples):
         common.plot(data, _title, meas.name, meas.label)
 
 
-def main():
+def consumption_plot(data, title, options):
+    """ Plot consumption values according to options """
+
+    if '-p' in options:
+        oml_plot(data, title, [MEASURES_D['power']])
+    if "-v" in options:
+        oml_plot(data, title, [MEASURES_D['voltage']])
+    if "-c" in options:
+        oml_plot(data, title, [MEASURES_D['current']])
+
+    # All Plot on the same window
+    if "-a" in options:
+        oml_plot(data, title, MEASURES_D.values())
+
+    # Clock verification
+    if "-t" in options:
+        common.oml_plot_clock(data)
+
+    plt.tight_layout()
+    plt.show()
+
+
+def main():  # pylint:disable=too-many-branches
     """ Main command """
     options = []
     filename = ""
@@ -89,10 +119,7 @@ def main():
     s_end = -1
     title = "Node"
     for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            usage()
-            sys.exit()
-        elif opt in ("-i", "--input"):
+        if opt in ("-i", "--input"):
             filename = arg
         elif opt in ("-l", "--label"):
             title = arg
@@ -110,31 +137,18 @@ def main():
             options.append('-v')
         elif opt in ("-a", "--all"):
             options.append("-a")
+        else:  # opt in ("-h", "--help"):
+            usage()
+            sys.exit()
 
     if len(filename) == 0:
         usage()
         sys.exit(2)
 
     # Load file
-    data = common.oml_load(filename, 'consumption', MEASURES_D.values())
-    data = data[s_beg:s_end]
+    data = oml_load(filename, s_beg, s_end)
 
-    if '-p' in options:
-        oml_plot_conso(data, title, [MEASURES_D['power']])
-    if "-v" in options:
-        oml_plot_conso(data, title, [MEASURES_D['voltage']])
-    if "-c" in options:
-        oml_plot_conso(data, title, [MEASURES_D['current']])
-
-    # All Plot on the same window
-    if "-a" in options:
-        oml_plot_conso(data, title, MEASURES_D.values())
-
-    # Clock verification
-    if "-t" in options:
-        common.oml_plot_clock(data)
-
-    plt.show()
+    consumption_plot(data, title, options)
 
 
 if __name__ == "__main__":
