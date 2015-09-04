@@ -40,11 +40,15 @@ for plot circuit --circuit=<filename> or -c <filename>
 #                         'R0912' too-many branches
 # pylint:disable=I0011,E1101,R0912
 
+import os
 import sys
 import getopt
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+from collections import namedtuple
+
+from . import common
 
 # http://stackoverflow.com/a/26605247/395687
 # pip install --no-index -f http://dist.plone.org/thirdparty/ -U PIL
@@ -55,57 +59,34 @@ import csv
 import json
 import matplotlib.patches as patches
 
-FIELDS = {'t_s': 3, 't_us': 4, 'x': 5, 'y': 6, 'th': 7}
-DECO = {'marker': 0, 'color': 1, 'size': 2, 'x': 3, 'y': 4}
-MAPS = {'marker': 0, 'file': 1, 'ratio': 2, 'sizex': 3, 'sizey': 4,
-        'offsetx': 5, 'offsety': 6}
+from . import common
+
+MEASURES_D = common.measures_dict(
+    ('x', float, 'X'),
+    ('y', float, 'Y'),
+    ('theta', float, 'yaw angle (rad)'),
+)
+
+Deco = namedtuple('Deco', ['marker', 'color', 'size', 'x', 'y'])
+Map = namedtuple('Map', ['marker', 'file', 'ratio', 'sizex', 'sizey',
+                         'offsetx', 'offsety'])
+
+def scale_with_map(posx, posy, sitemap=()):
+    """ Scale `posx` and `posy` with `sitemap` scaling informations """
+    if not sitemap:
+        return posx, posy
+    scaled_x = (posx - sitemap.offsetx) / sitemap.ratio
+    scaled_y = sitemap.sizey - (posy - sitemap.offsety) / sitemap.ratio
+    return scaled_x, scaled_y
 
 
-def oml_load(filename):
-    """ Load iot-lab om file
-
-    Parameters:
-    ------------
-    filename: string
-              oml filename
-
-    Returns:
-    -------
-    data : numpy array
-    [oml_timestamp 1 count timestamp_s timestamp_us x y theta]
-
-    >>> from StringIO import StringIO
-    >>> oml_load(StringIO('\\n' * 10 + '1 2 3\\n'))
-    array([ 1.,  2.,  3.])
-
-    >>> sys.stderr = sys.stdout  # hide stderr output
-
-    >>> oml_load('/invalid/file/path')
-    Traceback (most recent call last):
-    SystemExit: 2
-
-    >>> oml_load(StringIO('\\n' * 10 + 'invalid_content'))
-    array(nan)
-
-    # Invalid file content.
-    # Raises IOError on python2.6 and StopIteration in python2.7
-    >>> oml_load(StringIO('1 2 3'))  # doctest:+ELLIPSIS
-    Traceback (most recent call last):
-    SystemExit: ...
-
-
-    >>> sys.stderr = sys.__stderr__
-    """
-    try:
-        data = np.genfromtxt(filename, skip_header=10, invalid_raise=False)
-    except IOError as err:
-        sys.stderr.write("Error opening oml file:\n{0}\n".format(err))
-        sys.exit(2)
-    except (ValueError, StopIteration) as err:
-        sys.stderr.write("Error reading oml file:\n{0}\n".format(err))
-        sys.exit(3)
-
-    return data
+def scale_points_with_map(coordinates, sitemap):
+    """ Scale circuit coordinates with `sitemap` scaling informations """
+    checkpoints = []
+    for coord in coordinates:
+        point = scale_with_map(coord['x'], coord['y'], sitemap)
+        checkpoints.append(point)
+    return checkpoints
 
 
 def maps_load(filename):
@@ -125,47 +106,44 @@ def maps_load(filename):
     ['f' 'filename' ratio sizex sizey ofx ofy]
 
     """
+    map_dir = os.path.dirname(filename)
+
     try:
         datafile = open(filename, 'r')
         datareader = csv.reader(datafile, delimiter=' ')
+        # Skip empty lines and comments
+        rows = (d for d in datareader if len(d) and d[0] != '#')
     except IOError as err:
-        sys.stderr.write("Error opening maps file:\n{0}\n".format(err))
+        sys.stderr.write("Error opening map file:\n{0}\n".format(err))
         sys.exit(2)
     except (ValueError, StopIteration) as err:
-        sys.stderr.write("Error reading maps file:\n{0}\n".format(err))
+        sys.stderr.write("Error reading map file:\n{0}\n".format(err))
         sys.exit(3)
 
-    # Search if there is a map and split with other
-    # elements (data_deco) and the map (data_map)
-    findmap = False
-    data_map = []
+
+    # Search if there is a map and split with other elements (data_deco)
+    sitemap = None
     data_deco = []
-    for row in datareader:
-        if len(row) > 0:
-            if row[0] == 'f':
-                findmap = True
-                # float conversion
-                for index in range(2, len(row)):
-                    row[index] = float(row[index])
-                data_map = row
-            else:
-                if row[0] != '#':
-                    # float conversion
-                    for index in range(2, len(row)):
-                        row[index] = float(row[index])
-                    data_deco.append(row)
 
-    # If the map exists rescale x,y elements
-    if findmap is True:
-        ratio = data_map[MAPS['ratio']]
-        sizey = data_map[MAPS['sizey']]
-        ofx = data_map[MAPS['offsetx']]
-        ofy = data_map[MAPS['offsety']]
-        for ditem in data_deco:
-            ditem[DECO['x']] = (ditem[DECO['x']] - ofx) / ratio
-            ditem[DECO['y']] = sizey - (ditem[DECO['y']] - ofy) / ratio
+    for row in rows:
+        # float conversion for rows 2 to -1
+        for index in range(2, len(row)):
+            row[index] = float(row[index])
 
-    return data_deco, data_map
+        if row[0] == 'f':  # map file
+            row[1] = os.path.join(map_dir, row[1])
+            sitemap = Map(*row)
+        else:  # firts column is marker for printing
+            data_deco.append(Deco(*row))
+
+    # Rescale, noop if map is None
+    decos = []
+    for ditem in data_deco:
+        posx, posy = scale_with_map(ditem.x, ditem.y, sitemap)
+        deco = ditem._replace(x=posx, y=posy)
+        decos.append(deco)
+
+    return decos, sitemap
 
 
 def circuit_load(filename):
@@ -203,13 +181,24 @@ def circuit_load(filename):
     }
     """
 
-    json_data = open(filename, "rb")
-    circuit = json.load(json_data)
-    json_data.close()
-    return circuit
+    with open(filename, 'rb') as json_file:
+        return json.load(json_file)
 
 
-def oml_plot(data, title, deco, maps, options, circuit=None):
+def oml_plot_angle(data, title, xlabel=common.TIMESTAMP_LABEL):
+    """ Plot data 'angel' field """
+    ylabel = MEASURES_D['theta'].label
+    title = '%s %s' % (title, 'angle')
+
+    plt.figure()
+    plt.title(title)
+    plt.grid()
+    plt.plot(data['timestamp'], data['theta'])
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+
+
+def oml_plot(data, title, decos, sitemap, circuit=None):
     """ Plot iot-lab oml data
 
     Parameters:
@@ -218,11 +207,11 @@ def oml_plot(data, title, deco, maps, options, circuit=None):
       [oml_timestamp 1 count timestamp_s timestamp_us power voltage current]
     title: string
        title of the plot
-    deco: array
+    decos: array
        [marker, color, size,  x, y]
        for marker see http://matplotlib.org/api/markers_api.html
        for color  see http://matplotlib.org/api/colors_api.html
-    maps: array (size 1)
+    sitemap: array (size 1)
        [marker, filename_img, ratio, sizex, sizey]
        plot point item for trajectory with filename_img in background
     circuit:
@@ -233,113 +222,52 @@ def oml_plot(data, title, deco, maps, options, circuit=None):
     plt.title(title + ' trajectory')
     plt.grid()
     # Plot map image in background
-    if len(maps) > 0:
-        fname = maps[MAPS['file']]
+
+
+    if sitemap:
         try:
-            image = Image.open(fname).convert("L")
+            image = Image.open(sitemap.file).convert("L")
         except IOError as err:
-            sys.stderr.write(
-                "Error opening image map file:\n{0}\n".format(err))
+            sys.stderr.write("Cannot open image map file:\n{0}\n".format(err))
             sys.exit(2)
         arr = np.asarray(image)
         plt.imshow(arr, cmap=cm.Greys_r)
-        ratio = maps[MAPS['ratio']]
-        sizey = maps[MAPS['sizey']]
-        ofx = maps[MAPS['offsetx']]
-        ofy = maps[MAPS['offsety']]
-    else:
-        ratio = 0
-        sizey = 0
-        ofx = 0
-        ofy = 0
+
     # Plot elements for decoration
-    for ditem in deco:
-        plt.scatter(ditem[DECO['x']], ditem[DECO['y']],
-                    marker=ditem[DECO['marker']],
-                    color=ditem[DECO['color']], s=ditem[DECO['size']])
+    for deco in decos:
+        plt.scatter(deco.x, deco.y, marker=deco.marker,
+                    color=deco.color, s=deco.size)
+
+
     # Plot robot trajectory
-    if "-i" in options:
-        timestamps = data[:, FIELDS['t_s']] + data[:, FIELDS['t_us']] / 1e6
-        if ratio == 0:
-            plt.plot(data[:, FIELDS['x']], data[:, FIELDS['y']])
-            plt.xlabel('X (m)')
-            plt.ylabel('Y (m)')
-        else:
-            plt.plot((data[:, FIELDS['x']] - ofx)/ratio,
-                     sizey - (data[:, FIELDS['y']] - ofy)/ratio)
-            plt.xlabel('X (pixels)')
-            plt.ylabel('Y (pixels)')
+    if data is not None:
+        data_x, data_y = scale_with_map(data['x'], data['y'], sitemap)
+        unit = 'm' if sitemap else 'pixels'  # scaled or not
+
+        plt.plot(data_x, data_y)
+        plt.xlabel('X (%s)' % unit)
+        plt.ylabel('Y (%s)' % unit)
+
 
     # Plot circuit
-    # if circuit is not None:
-    if "-c" in options:
-        c_x = []
-        c_y = []
-        checkpoint_path = []
+    if circuit is not None:  # "-c" in options:
+        checkpoints = scale_points_with_map(circuit['coordinates'], sitemap)
 
-        for checkpoint in circuit['coordinates']:
-            if ratio == 0:
-                coord_x = checkpoint['x']
-                coord_y = checkpoint['y']
-            else:
-                coord_x = (checkpoint['x'] - ofx)/ratio
-                coord_y = sizey - (checkpoint['y'] - ofy)/ratio
-            c_x.append(coord_x)
-            c_y.append(coord_y)
-            checkpoint_path.append([coord_x, coord_y])
-
-        checkpoint_lines = patches.Polygon(checkpoint_path, linestyle='dashed',
+        checkpoint_lines = patches.Polygon(checkpoints, linestyle='dashed',
                                            linewidth=2, edgecolor='red',
                                            fill=False)
         a_x = circuit_fig.add_subplot(111)
         a_x.add_patch(checkpoint_lines)
-        plt.plot(c_x, c_y, 'ro')
+        coord_x = [c[0] for c in checkpoints]
+        coord_y = [c[1] for c in checkpoints]
+        plt.plot(coord_x, coord_y, 'ro')
 
-    # Figure angle initialization
-    if "-a" in options:
-        plt.figure()
-        plt.title(title + ' angle')
-        plt.grid()
-        plt.plot(timestamps, data[:, FIELDS['th']])
-        plt.xlabel('Sample Time (sec)')
-        plt.ylabel('yaw angle (rad)')
     return
 
-
-def oml_clock(data):
-    """ Clock time plot and verification
-
-    Parameters:
-    ------------
-    data: numpy array
-      [oml_timestamp 1 count timestamp_s timestamp_us power voltage current]
-    echd : int
-       sample count begin
-    echf : int
-       sample count end
-    """
-    plt.figure()
-    plt.title("Clock time verification")
-    plt.grid()
-    time = data[:, FIELDS['t_s']] + data[:, FIELDS['t_us']] / 1e6
-    clock = np.diff(time) * 1000  # pylint:disable=I0011,E1101
-    plt.plot(clock)
-
-    print 'NB Points      =', len(time)
-    print 'Duration    (s)=', time[-1] - time[0]
-    print 'Steptime    (ms)=', 1000 * (time[-1] - time[0]) / len(time)
-    print 'Time to', time[0], 'From', time[-1]
-    print 'Clock mean (ms)=', np.mean(clock)  # pylint:disable=I0011,E1101
-    print 'Clock std  (ms)=', np.std(clock)  # pylint:disable=I0011,E1101
-    print 'Clock max  (ms)=', np.max(clock)
-    print 'Clock min  (ms)=', np.min(clock)
-    return
 
 
 def usage():
-    """Usage command print
-    """
-    print "Usage"
+    """Usage command print """
     print __doc__
 
 
@@ -358,6 +286,8 @@ def main():
     s_beg = 0
     s_end = -1
     title = "Robot"
+    filename_maps = None
+    filename_circuit = None
     for opt, arg in opts:
         if opt in ("-h", "--help"):
             usage()
@@ -387,22 +317,30 @@ def main():
         if len(filename) == 0:
             usage()
             sys.exit(2)
-        data = oml_load(filename)[s_beg:s_end, :]
+        data = common.oml_load(filename, 'robot_pose', MEASURES_D.values())
+        data = data[s_beg:s_end]
     else:
         data = None
-    if "-m" in options:
-        deco, img_map = maps_load(filename_maps)
-    else:
-        deco = ""
-        img_map = ""
-    if "-c" in options:
+
+
+    decos = ()
+    img_map = None
+    if filename_maps is not None:  # "-m" in options:
+        decos, img_map = maps_load(filename_maps)
+
+    circuit = None
+    if filename_circuit is not None:  # "-c" in options:
         circuit = circuit_load(filename_circuit)
-    else:
-        circuit = None
-    oml_plot(data, title, deco, img_map, options, circuit)
+
+    oml_plot(data, title, decos, img_map, circuit)
+
+    # Figure angle initialization
+    if '-a' in options:
+        oml_plot_angle(data, title)
+
     # Clock verification
     if "-t" in options:
-        oml_clock(data)
+        common.oml_plot_clock(data)
 
     plt.show()
 

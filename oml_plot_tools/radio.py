@@ -39,220 +39,61 @@ for help use --help or -h
 
 import sys
 import getopt
-import numpy as np
 import matplotlib.pyplot as plt
+from . import common
 
-FIELDS = {'type': 1, 't_s': 3, 't_us': 4, 'channel': 5, 'rssi': 6}
-
-
-def oml_load(filename):
-    """ Load iot-lab om file
-
-    Parameters:
-    ------------
-    filename: string
-              oml filename
-
-    Returns:
-    -------
-    data : numpy array
-    [oml_timestamp 2 count timestamp_s timestamp_us channel rssi]
+MEASURES_D = common.measures_dict(
+    ('channel', int, 'Channel'),
+    ('rssi', int, 'RSSI (dBm)'),
+)
 
 
-    >>> from StringIO import StringIO
-    >>> oml_load(StringIO('\\n' * 10 + '0 2\\n' + '1 2\\n'))
-    array([[ 0.,  2.],
-           [ 1.,  2.]])
-
-    # error cases
-    >>> sys.stderr = sys.stdout  # hide stderr output
-    >>> oml_load('/invalid/file/path')
-    Traceback (most recent call last):
-    SystemExit: 2
-
-    >>> oml_load(StringIO('\\n' * 10 + 'invalid_content'))
-    Traceback (most recent call last):
-    SystemExit: 4
-
-    # Not enough lines to skiprows
-    # Raises IOError on python2.6 and StopIteration in python2.7
-    >>> oml_load(StringIO('1 2 3'))  # doctest:+ELLIPSIS
-    Traceback (most recent call last):
-    SystemExit: ...
-
-    # invalid oml 'type' file
-    >>> oml_load(StringIO('\\n' * 10 + '0 1\\n' + '1 1\\n'))
-    Traceback (most recent call last):
-    SystemExit: 5
-
-    >>> sys.stderr = sys.__stderr__
-
-    """
-    try:
-        data = np.genfromtxt(filename, skip_header=10, invalid_raise=False)
-    except IOError as err:
-        sys.stderr.write("Error opening oml file:\n{0}\n".format(err))
-        sys.exit(2)
-    except (ValueError, StopIteration) as err:
-        sys.stderr.write("Error reading oml file:\n{0}\n".format(err))
-        sys.exit(3)
-
-    # Empty 'parsing' makes type verification fail
-    if np.all(np.isnan(data)):
-        sys.stderr.write("Error non oml file\n")
-        sys.exit(4)
-
-    # Type oml file verification
-    for typ in data[:, FIELDS['type']]:
-        if typ != 2:
-            print "Error non radio type oml file"
-            sys.exit(5)
-
-    return data
+def list_channels(data):
+    """ List radio channels used in data """
+    channels = list(set(data['channel']))
+    return sorted(channels)
 
 
-def oml_channels_set(data):
-    """ lists radio channels used in data
+def with_channel(data, channel):
+    """ Extract data where measured channel == `channel` """
+    select = data['channel'] == channel
+    return data[select]
 
-    Parameters:
-    ------------
-    data: numpy array
-      [oml_timestamp 1 count timestamp_s timestamp_us power voltage current]
 
-    Returns:
-    --------
-    channels_set : a set of int channel
+def oml_plot_rssi(data, title, seperated=False):
+    """ Plot rssi for all channels.
+
+    :param data: numpy array returned by oml_read
+    :param title: Subplots title base
+    :param seperated: plots seperated on different windows
     """
 
-    channels_set = set([])
-    for radio_meas in data:
-        channel = str(radio_meas[FIELDS['channel']])
-        if channel not in channels_set:
-            channels_set.add(channel)
+    channels = list_channels(data)
+    nbplots = len(channels)
+    meas = MEASURES_D['rssi']
 
-    return channels_set
-
-
-def oml_separate_plot(data, title):
-    """ Plot iot-lab oml all data
-
-    Parameters:
-    ------------
-    data: numpy array
-      [oml_timestamp 1 count timestamp_s timestamp_us power voltage current]
-    title: string
-       title of the plot
-    """
-    channels_set = oml_channels_set(data)
-
-    for channel in channels_set:
+    # Only window for all
+    if not seperated:
         plt.figure()
-        plt.grid()
-        channel = int(float(channel))
-        plt.title(title + " Channel " + str(channel))
-        data_channel = data[data[:, FIELDS['channel']] == channel]
-        time_channel = (data_channel[:, FIELDS['t_s']] +
-                        data_channel[:, FIELDS['t_us']] / 1e6)
-        plt.plot(time_channel, data_channel[:, FIELDS['rssi']])
-        plt.ylabel('RSSI (dBm)')
 
-    return
+    for num, channel in enumerate(channels, start=1):
+        # Select data for channel
+        cdata = with_channel(data, channel)
+        _title = '%s Channel %s' % (title, channel)
 
+        # One window per plot
+        if seperated:
+            plt.figure()
 
-def oml_all_plot(data, title):
-    """ Plot iot-lab oml all data
-
-    Parameters:
-    ------------
-    data: numpy array
-      [oml_timestamp 1 count timestamp_s timestamp_us power voltage current]
-    title: string
-       title of the plot
-    """
-
-    channels_set = oml_channels_set(data)
-    nbplots = len(channels_set)
-
-    if nbplots > 0:
-        plt.figure()
-        i = 0
-        for channel in channels_set:
-            i = i + 1
-            channel_plot = plt.subplot(nbplots, 1, i)
-            channel_plot.grid()
-            channel = int(float(channel))
-            plt.title(title + " Channel " + str(channel))
-            data_channel = data[data[:, FIELDS['channel']] == channel]
-            time_channel = (data_channel[:, FIELDS['t_s']] +
-                            data_channel[:, FIELDS['t_us']] / 1e6)
-            channel_plot.plot(time_channel, data_channel[:, FIELDS['rssi']])
-            plt.ylabel('RSSI (dBm)')
-
-    return
-
-
-def oml_plot(data, title, labely, channel):
-    """ Plot iot-lab oml data
-
-    Parameters:
-    ------------
-    data: numpy array
-      [oml_timestamp 1 count timestamp_s timestamp_us power voltage current]
-    title: string
-       title of the plot
-    channel: number
-       channel to plot 5 = power, 6 = voltage, 7 = current
-    """
-    timestamps = data[:, FIELDS['t_s']] + data[:, FIELDS['t_us']] / 1e6
-
-    plt.figure()
-    plt.title(title)
-    plt.grid()
-    plt.plot(timestamps, data[:, FIELDS[channel]])
-    plt.xlabel('Sample Time (sec)')
-    plt.ylabel(labely)
-
-    return
-
-
-def oml_clock(data):
-    """ Clock time plot and verification
-
-    Parameters:
-    ------------
-    data: numpy array
-      [oml_timestamp 1 count timestamp_s timestamp_us power voltage current]
-    echd : int
-       sample count begin
-    echf : int
-       sample count end
-    """
-    plt.figure()
-    plt.title("Clock time verification")
-    plt.grid()
-    time = data[:, FIELDS['t_s']] + data[:, FIELDS['t_us']] / 1e6
-    clock = np.diff(time) * 1000  # pylint:disable=I0011,E1101
-    plt.plot(clock)
-
-    print 'NB Points      =', len(time)
-    print 'Duration    (s)=', time[-1] - time[0]
-    print 'Steptime    (ms)=', 1000 * (time[-1] - time[0]) / len(time)
-    print 'Time to', time[0], 'From', time[-1]
-    print 'Clock mean (ms)=', np.mean(clock)  # pylint:disable=I0011,E1101
-    print 'Clock std  (ms)=', np.std(clock)  # pylint:disable=I0011,E1101
-    print 'Clock max  (ms)=', np.max(clock)
-    print 'Clock min  (ms)=', np.min(clock)
-    return
+        plt.subplot(nbplots, 1, num)
+        common.plot(cdata, _title, meas.name, meas.label)
 
 
 def usage():
-    """Usage command print
-    """
-    print "Usage"
+    """ Usage command print """
     print __doc__
 
 
-# R0912:too-many-branches
 def main():  # pylint:disable=R0912
     """ Main command
     """
@@ -293,16 +134,19 @@ def main():  # pylint:disable=R0912
         sys.exit(2)
 
     # Load file
-    data = oml_load(filename)[s_beg:s_end, :]
+    data = common.oml_load(filename, 'radio', MEASURES_D.values())
+    data = data[s_beg:s_end]
+
     # Plot in a single window
-    if "-a" in options:
-        oml_all_plot(data, title)
+    if '-a' in options:
+        oml_plot_rssi(data, title)
     # Plot in several windows
-    if "-p" in options:
-        oml_separate_plot(data, title)
+    if '-p' in options:
+        oml_plot_rssi(data, title, seperated=True)
+
     # Clock verification
-    if "-t" in options:
-        oml_clock(data)
+    if '-t' in options:
+        common.oml_plot_clock(data)
     plt.show()
 
 
