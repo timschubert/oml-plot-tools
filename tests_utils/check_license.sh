@@ -14,6 +14,9 @@ files_list=$(echo "${files_list}" | grep -v \
     -e '.md$' \
     -e 'AUTHORS' \
     -e 'COPYING' \
+    -e '*.oml' \
+    -e '.oml$' \
+    -e '.png$' \
 )
 
 # Verify that 'AUTHORS' and 'COPYING' files exist

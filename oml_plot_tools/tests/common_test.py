@@ -47,7 +47,6 @@ class TestCommon(unittest.TestCase):
         content += MEASURE_FMT.format(t=1.1234, type=CONSO_T, num=2,
                                       t_s=12346, t_us=678900, measures=meas)
 
-
         ret = common.oml_load(StringIO(content), 'consumption',
                               consum.MEASURES_D.values())
 
@@ -55,7 +54,6 @@ class TestCommon(unittest.TestCase):
                     (12346.6789, 'consumption', 2, 12346, 678900, 1., 2., 3.)]
         self.assertEqual(expected, ret.tolist())
         self.assertIsInstance(ret, numpy.ndarray)
-
 
     def test_oml_invalid(self):
 
@@ -74,7 +72,6 @@ class TestCommon(unittest.TestCase):
         self.assertRaises(ValueError, common.oml_load,
                           StringIO('1 2 3'), 'consumption',
                           consum.MEASURES_D.values())
-
 
         # invalid oml 'type' file
         meas = '1. 2. 3.'

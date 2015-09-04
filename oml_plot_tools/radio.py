@@ -47,11 +47,13 @@ MEASURES_D = common.measures_dict(
     ('rssi', int, 'RSSI (dBm)'),
 )
 
+
 def oml_load(filename, s_beg=0, s_end=-1):
     """ Load radio oml file """
     data = common.oml_load(filename, 'radio', MEASURES_D.values())
     data = data[s_beg:s_end]
     return data
+
 
 def list_channels(data):
     """ List radio channels used in data """

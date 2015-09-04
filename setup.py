@@ -42,7 +42,7 @@ def get_version(package):
                 return eval(line.split('=')[-1])  # pylint:disable=eval-used
 
 
-#SCRIPTS = ['auth-cli', 'experiment-cli', 'node-cli', 'profile-cli', 'robot-cli']
+SCRIPTS = ['plot_oml_consum', 'plot_oml_radio', 'plot_oml_traj']
 
 
 setup(
@@ -55,7 +55,7 @@ setup(
     license=LICENSE,
     download_url='http://github.com/iot-lab/oml-plot-tools/',
     packages=find_packages(),
-    #scripts=SCRIPTS,
+    scripts=SCRIPTS,
     classifiers=['Development Status :: 3 - Alpha',
                  'Programming Language :: Python',
                  'Programming Language :: Python :: 2',

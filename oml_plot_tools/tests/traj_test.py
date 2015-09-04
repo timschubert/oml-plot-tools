@@ -26,6 +26,7 @@ import unittest
 from . import common as test_common
 from .. import traj
 
+
 class TestTraj(unittest.TestCase):
 
     def test_doc(self):

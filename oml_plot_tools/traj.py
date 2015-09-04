@@ -59,7 +59,6 @@ import csv
 import json
 import matplotlib.patches as patches
 
-from . import common
 
 MEASURES_D = common.measures_dict(
     ('x', float, 'X'),
@@ -70,6 +69,7 @@ MEASURES_D = common.measures_dict(
 Deco = namedtuple('Deco', ['marker', 'color', 'size', 'x', 'y'])
 Map = namedtuple('Map', ['marker', 'file', 'ratio', 'sizex', 'sizey',
                          'offsetx', 'offsety'])
+
 
 def scale_with_map(posx, posy, sitemap=()):
     """ Scale `posx` and `posy` with `sitemap` scaling informations """
@@ -119,7 +119,6 @@ def maps_load(filename):
     except (ValueError, StopIteration) as err:
         sys.stderr.write("Error reading map file:\n{0}\n".format(err))
         sys.exit(3)
-
 
     # Search if there is a map and split with other elements (data_deco)
     sitemap = None
@@ -198,7 +197,8 @@ def oml_plot_angle(data, title, xlabel=common.TIMESTAMP_LABEL):
     plt.ylabel(ylabel)
 
 
-def oml_plot(data, title, decos, sitemap, circuit=None):
+def oml_plot(data, title, decos, sitemap,  # pylint:disable=too-many-locals
+             circuit=None):
     """ Plot iot-lab oml data
 
     Parameters:
@@ -221,9 +221,8 @@ def oml_plot(data, title, decos, sitemap, circuit=None):
     circuit_fig = plt.figure()
     plt.title(title + ' trajectory')
     plt.grid()
+
     # Plot map image in background
-
-
     if sitemap:
         try:
             image = Image.open(sitemap.file).convert("L")
@@ -238,7 +237,6 @@ def oml_plot(data, title, decos, sitemap, circuit=None):
         plt.scatter(deco.x, deco.y, marker=deco.marker,
                     color=deco.color, s=deco.size)
 
-
     # Plot robot trajectory
     if data is not None:
         data_x, data_y = scale_with_map(data['x'], data['y'], sitemap)
@@ -247,7 +245,6 @@ def oml_plot(data, title, decos, sitemap, circuit=None):
         plt.plot(data_x, data_y)
         plt.xlabel('X (%s)' % unit)
         plt.ylabel('Y (%s)' % unit)
-
 
     # Plot circuit
     if circuit is not None:  # "-c" in options:
@@ -265,13 +262,12 @@ def oml_plot(data, title, decos, sitemap, circuit=None):
     return
 
 
-
 def usage():
     """Usage command print """
     print __doc__
 
 
-def main():
+def main():  # pylint:disable=too-many-statements
     """ Main command """
     options = []
     filename = ""
@@ -321,7 +317,6 @@ def main():
         data = data[s_beg:s_end]
     else:
         data = None
-
 
     decos = ()
     img_map = None
