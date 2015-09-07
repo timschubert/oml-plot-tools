@@ -71,6 +71,31 @@ Map = namedtuple('Map', ['marker', 'file', 'ratio', 'sizex', 'sizey',
                          'offsetx', 'offsety'])
 
 
+def oml_load(filename, s_beg=0, s_end=-1):
+    """ Load consumption oml file """
+    data = common.oml_load(filename, 'robot_pose', MEASURES_D.values())
+    data = data[s_beg:s_end]
+    return data
+
+
+def trajectory_plot(data, title,  # pylint:disable=too-many-arguments
+                    decos, img_map, circuit, options):
+    """ Plot trajectories infos """
+
+    oml_plot_map(data, title, decos, img_map, circuit)
+
+    # Figure angle initialization
+    if '-a' in options:
+        oml_plot_angle(data, title)
+
+    # Clock verification
+    if "-t" in options:
+        common.oml_plot_clock(data)
+
+    plt.tight_layout()
+    plt.show()
+
+
 def scale_with_map(posx, posy, sitemap=()):
     """ Scale `posx` and `posy` with `sitemap` scaling informations """
     if not sitemap:
@@ -197,8 +222,8 @@ def oml_plot_angle(data, title, xlabel=common.TIMESTAMP_LABEL):
     plt.ylabel(ylabel)
 
 
-def oml_plot(data, title, decos, sitemap,  # pylint:disable=too-many-locals
-             circuit=None):
+def oml_plot_map(data, title, decos, sitemap,  # pylint:disable=too-many-locals
+                 circuit=None):
     """ Plot iot-lab oml data
 
     Parameters:
@@ -270,7 +295,7 @@ def usage():
 def main():  # pylint:disable=too-many-statements
     """ Main command """
     options = []
-    filename = ""
+    filename = None
     try:
         opts, _ = getopt.getopt(sys.argv[1:], "i:hta:m:b:e:l:c:",
                                 ["input=", "help", "time", "angle", "maps=",
@@ -291,6 +316,9 @@ def main():  # pylint:disable=too-many-statements
         elif opt in ("-i", "--input"):
             options.append("-i")
             filename = arg
+            if len(filename) == 0:
+                usage()
+                sys.exit(2)
         elif opt in ("-l", "--label"):
             title = arg
         elif opt in ("-b", "--begin"):
@@ -309,12 +337,8 @@ def main():  # pylint:disable=too-many-statements
             options.append("-a")
 
     # Load file
-    if "-i" in options:
-        if len(filename) == 0:
-            usage()
-            sys.exit(2)
-        data = common.oml_load(filename, 'robot_pose', MEASURES_D.values())
-        data = data[s_beg:s_end]
+    if filename is not None:  # "-i" in options:
+        data = oml_load(filename, s_beg, s_end)
     else:
         data = None
 
@@ -327,18 +351,7 @@ def main():  # pylint:disable=too-many-statements
     if filename_circuit is not None:  # "-c" in options:
         circuit = circuit_load(filename_circuit)
 
-    oml_plot(data, title, decos, img_map, circuit)
-
-    # Figure angle initialization
-    if '-a' in options:
-        oml_plot_angle(data, title)
-
-    # Clock verification
-    if "-t" in options:
-        common.oml_plot_clock(data)
-
-    plt.tight_layout()
-    plt.show()
+    trajectory_plot(data, title, decos, img_map, circuit, options)
 
 
 if __name__ == "__main__":

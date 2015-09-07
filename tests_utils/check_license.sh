@@ -17,6 +17,8 @@ files_list=$(echo "${files_list}" | grep -v \
     -e '*.oml' \
     -e '.oml$' \
     -e '.png$' \
+    -e '.json$' \
+    -e '.txt$' \
 )
 
 # Verify that 'AUTHORS' and 'COPYING' files exist
