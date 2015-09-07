@@ -1,0 +1,2 @@
+# disable Xdisplay for tests
+backend: agg
