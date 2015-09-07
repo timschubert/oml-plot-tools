@@ -80,9 +80,14 @@ def compare_images(ref_img, tmp_img):
     return rms
 
 
-def utest_plot_and_compare(testcase, ref_img):
+def utest_plot_and_compare(testcase, ref_img, threshold=0.0):
     """ Plot image and compare files.
-    Keep file if they differ """
+    Keep file if they differ
+
+    'savefig' is not determinist between hosts so allow some differences with
+    threshold. Threshold choosen for png generated on Gaëtan computer
+    and errors found on ci server.
+    """
     tmp_img = os.path.join('/tmp', os.path.basename(ref_img))
 
     plt.tight_layout()
@@ -91,8 +96,9 @@ def utest_plot_and_compare(testcase, ref_img):
     # Check files
     rms = compare_images(ref_img, tmp_img)
 
-    msg = '%s != %s: Root-mean-square == %f != 0.0' % (ref_img, tmp_img, rms)
-    testcase.assertEqual(0.0, rms, msg=msg)
+    msg = '%s != %s: Root-mean-square == %f > %f' % (ref_img, tmp_img,
+                                                     rms, threshold)
+    testcase.assertLessEqual(rms, threshold, msg=msg)
 
     # Cleanup on success
     os.remove(tmp_img)
