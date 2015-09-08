@@ -21,28 +21,40 @@
 # knowledge of the CeCILL license and that you accept its terms.
 
 
-""" plot_oml_traj.py
+"""
+usage: plot_oml_traj [-h] [-i DATA] [-c CIRCUIT] [-m MAP_INFOS] [-l TITLE]
+                     [-b BEGIN] [-e END] [-t] [-a] [-ti]
 
-./plot_oml_traj.py --input=<oml_filename> --maps=<map_filename.txt>
-        --circuit=<circuit_filename.json> --time --angle --label=<MyExperiment>
+Plot iot-lab trajectory oml files
 
-for help use --help or -h
-for time verification --time or -t
-for plot angle --angle or -a
-for begin sample --begin=<sample_beg> or -b <sample_beg>
-for end sample --end=<sample_end> or -e <sample_end>
-for label title plot --label=<title> or -l <title>
-for plot maps and elements --maps=<filename> or -m <filename>
-for plot circuit --circuit=<filename> or -c <filename>
+optional arguments:
+  -h, --help            show this help message and exit
+  -i DATA, --input DATA
+                        Robot trajectory values
+  -c CIRCUIT, --circuit CIRCUIT
+                        Robot circuit file
+  -m MAP_INFOS, --maps MAP_INFOS
+                        Map and elements
+  -l TITLE, --label TITLE
+                        Graph title
+  -b BEGIN, --begin BEGIN
+                        Sample start
+  -e END, --end END     Sample end
+
+plot:
+  Plot selection
+
+  -t, --traj            Plot robot trajectory
+  -a, --angle           Plot robot angle
+  -ti, --time           Plot time verification
 """
 
-# disabling pylint errors 'E1101' no-member, false positive from pylint
-#                         'R0912' too-many branches
-# pylint:disable=I0011,E1101,R0912
 
 import os
 import sys
-import getopt
+import argparse
+# Issues with numpy and matplotlib.cm
+# pylint:disable=no-member
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -71,47 +83,10 @@ Map = namedtuple('Map', ['marker', 'file', 'ratio', 'sizex', 'sizey',
                          'offsetx', 'offsety'])
 
 
-def oml_load(filename, s_beg=0, s_end=-1):
+def oml_load(filename):
     """ Load consumption oml file """
     data = common.oml_load(filename, 'robot_pose', MEASURES_D.values())
-    data = data[s_beg:s_end]
     return data
-
-
-def trajectory_plot(data, title,  # pylint:disable=too-many-arguments
-                    decos, img_map, circuit, options):
-    """ Plot trajectories infos """
-
-    oml_plot_map(data, title, decos, img_map, circuit)
-
-    # Figure angle initialization
-    if '-a' in options:
-        oml_plot_angle(data, title)
-
-    # Clock verification
-    if "-t" in options:
-        common.oml_plot_clock(data)
-
-    plt.tight_layout()
-    plt.show()
-
-
-def scale_with_map(posx, posy, sitemap=()):
-    """ Scale `posx` and `posy` with `sitemap` scaling informations """
-    if not sitemap:
-        return posx, posy
-    scaled_x = (posx - sitemap.offsetx) / sitemap.ratio
-    scaled_y = sitemap.sizey - (posy - sitemap.offsety) / sitemap.ratio
-    return scaled_x, scaled_y
-
-
-def scale_points_with_map(coordinates, sitemap):
-    """ Scale circuit coordinates with `sitemap` scaling informations """
-    checkpoints = []
-    for coord in coordinates:
-        point = scale_with_map(coord['x'], coord['y'], sitemap)
-        checkpoints.append(point)
-    return checkpoints
 
 
 def maps_load(filename):
@@ -124,11 +99,11 @@ def maps_load(filename):
 
     Returns:
     -------
-    data_deco : numpy array
-    [[mark color size x y] [mark1 color1 size1 x1 y1]...]
-
     data_map : numpy array
     ['f' 'filename' ratio sizex sizey ofx ofy]
+
+    data_deco : numpy array
+    [[mark color size x y] [mark1 color1 size1 x1 y1]...]
 
     """
     map_dir = os.path.dirname(filename)
@@ -167,7 +142,7 @@ def maps_load(filename):
         deco = ditem._replace(x=posx, y=posy)
         decos.append(deco)
 
-    return decos, sitemap
+    return sitemap, decos
 
 
 def circuit_load(filename):
@@ -209,6 +184,69 @@ def circuit_load(filename):
         return json.load(json_file)
 
 
+PARSER = argparse.ArgumentParser(
+    prog='plot_oml_traj', description="Plot iot-lab trajectory oml files")
+PARSER.add_argument('-i', '--input', dest='data', type=oml_load,
+                    help="Robot trajectory values")
+PARSER.add_argument('-c', '--circuit', dest='circuit', type=circuit_load,
+                    help="Robot circuit file")
+PARSER.add_argument('-m', '--maps', dest='map_infos', type=maps_load,
+                    default=(None, ()), help="Map and elements")
+
+PARSER.add_argument('-l', '--label', dest='title', default="Robot",
+                    help="Graph title")
+PARSER.add_argument('-b', '--begin', default=0, type=int, help="Sample start")
+PARSER.add_argument('-e', '--end', default=-1, type=int, help="Sample end")
+
+_PLOT = PARSER.add_argument_group('plot', "Plot selection")
+_PLOT.add_argument('-t', '--traj', dest='plot', const='traj',
+                   action='append_const', help="Plot robot trajectory")
+_PLOT.add_argument('-a', '--angle', dest='plot', const='angle',
+                   action='append_const', help="Plot robot angle")
+_PLOT.add_argument('-ti', '--time', dest='plot', const='time',
+                   action='append_const', help="Plot time verification")
+
+
+def trajectory_plot(data, title,  # pylint:disable=too-many-arguments
+                    decos, img_map, circuit, selection):
+    """ Plot trajectories infos """
+
+    if 'traj' in selection:
+        oml_plot_map(data, title, decos, img_map, circuit)
+
+    # Figure angle initialization
+    if 'angle' in selection:
+        oml_plot_angle(data, title)
+
+    # Clock verification
+    if 'time' in selection:
+        common.oml_plot_clock(data)
+
+    try:
+        plt.tight_layout()
+    except ValueError:
+        pass
+    plt.show()
+
+
+def scale_with_map(posx, posy, sitemap=None):
+    """ Scale `posx` and `posy` with `sitemap` scaling informations """
+    if sitemap is None:
+        return posx, posy
+    scaled_x = (posx - sitemap.offsetx) / sitemap.ratio
+    scaled_y = sitemap.sizey - (posy - sitemap.offsety) / sitemap.ratio
+    return scaled_x, scaled_y
+
+
+def scale_points_with_map(coordinates, sitemap):
+    """ Scale circuit coordinates with `sitemap` scaling informations """
+    checkpoints = []
+    for coord in coordinates:
+        point = scale_with_map(coord['x'], coord['y'], sitemap)
+        checkpoints.append(point)
+    return checkpoints
+
+
 def oml_plot_angle(data, title, xlabel=common.TIMESTAMP_LABEL):
     """ Plot data 'angel' field """
     ylabel = MEASURES_D['theta'].label
@@ -242,6 +280,9 @@ def oml_plot_map(data, title, decos, sitemap,  # pylint:disable=too-many-locals
     circuit:
        TODO
     """
+
+    if not (sitemap or decos or data or circuit):
+        return  # nothing to graph
     # Figure trajectory initialization
     circuit_fig = plt.figure()
     plt.title(title + ' trajectory')
@@ -272,7 +313,7 @@ def oml_plot_map(data, title, decos, sitemap,  # pylint:disable=too-many-locals
         plt.ylabel('Y (%s)' % unit)
 
     # Plot circuit
-    if circuit is not None:  # "-c" in options:
+    if circuit is not None:
         checkpoints = scale_points_with_map(circuit['coordinates'], sitemap)
 
         checkpoint_lines = patches.Polygon(checkpoints, linestyle='dashed',
@@ -287,71 +328,17 @@ def oml_plot_map(data, title, decos, sitemap,  # pylint:disable=too-many-locals
     return
 
 
-def usage():
-    """Usage command print """
-    print __doc__
-
-
 def main():  # pylint:disable=too-many-statements
     """ Main command """
-    options = []
-    filename = None
-    try:
-        opts, _ = getopt.getopt(sys.argv[1:], "i:hta:m:b:e:l:c:",
-                                ["input=", "help", "time", "angle", "maps=",
-                                 "begin=", "end=", "label=", "circuit="])
-    except getopt.GetoptError:
-        usage()
-        sys.exit(2)
+    opts = PARSER.parse_args()
+    # default to plot traj/map
+    selection = opts.plot or ('traj')
+    # select samples
+    data = opts.data[opts.begin:opts.end] if opts.data else None
+    map_img, map_decos = opts.map_infos
 
-    s_beg = 0
-    s_end = -1
-    title = "Robot"
-    filename_maps = None
-    filename_circuit = None
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            usage()
-            sys.exit()
-        elif opt in ("-i", "--input"):
-            options.append("-i")
-            filename = arg
-            if len(filename) == 0:
-                usage()
-                sys.exit(2)
-        elif opt in ("-l", "--label"):
-            title = arg
-        elif opt in ("-b", "--begin"):
-            s_beg = int(arg)
-        elif opt in ("-e", "--end"):
-            s_end = int(arg)
-        elif opt in ("-t", "--time"):
-            options.append("-t")
-        elif opt in ("-m", "--maps"):
-            options.append("-m")
-            filename_maps = arg
-        elif opt in ("-c", "--circuit"):
-            options.append("-c")
-            filename_circuit = arg
-        elif opt in ("-a", "--angle"):
-            options.append("-a")
-
-    # Load file
-    if filename is not None:  # "-i" in options:
-        data = oml_load(filename, s_beg, s_end)
-    else:
-        data = None
-
-    decos = ()
-    img_map = None
-    if filename_maps is not None:  # "-m" in options:
-        decos, img_map = maps_load(filename_maps)
-
-    circuit = None
-    if filename_circuit is not None:  # "-c" in options:
-        circuit = circuit_load(filename_circuit)
-
-    trajectory_plot(data, title, decos, img_map, circuit, options)
+    trajectory_plot(data, opts.title, map_decos, map_img,
+                    opts.circuit, selection)
 
 
 if __name__ == "__main__":
