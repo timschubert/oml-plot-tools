@@ -21,25 +21,34 @@
 # knowledge of the CeCILL license and that you accept its terms.
 
 
-""" plot_oml_consum.py
+"""
+usage: plot_oml_consum [-h] -i DATA [-l TITLE] [-b BEGIN] [-e END] [-a] [-p]
+                       [-v] [-c] [-t]
 
-plot oml filename node consumption
-           [-abcehptv] -i <filename> or --input=<filename>
+Plot iot-lab consumption OML files
 
-for time verification --time or -t
-for begin sample --begin=<sample_beg> or -b <sample_beg>
-for end sample --end=<sample_end> or -e <sample_end>
-for label title plot --label=<title> or -l <title>
-for plot consumption --power or -p
-for plot voltage --voltage or -v
-for plot current --current or -c
-for all plot --all or -a
-for help use --help or -h
+optional arguments:
+  -h, --help            show this help message and exit
+  -i DATA, --input DATA
+                        Node consumption values
+  -l TITLE, --label TITLE
+                        Graph title
+  -b BEGIN, --begin BEGIN
+                        Sample start
+  -e END, --end END     Sample end
+
+plot:
+  Plot selection
+
+  -a, --all             Plot power/voltage/current on one figure (default)
+  -p, --power           Plot power
+  -v, --voltage         Plot voltage
+  -c, --current         Plot current
+  -t, --time            Plot time verification
 """
 
 
-import sys
-import getopt
+import argparse
 import matplotlib.pyplot as plt
 from . import common
 
@@ -51,16 +60,61 @@ MEASURES_D = common.measures_dict(
 )
 
 
-def usage():
-    """Usage command print """
-    print __doc__
-
-
-def oml_load(filename, s_beg=0, s_end=-1):
+def oml_load(filename):
     """ Load consumption oml file """
     data = common.oml_load(filename, 'consumption', MEASURES_D.values())
-    data = data[s_beg:s_end]
     return data
+
+
+PARSER = argparse.ArgumentParser(
+    prog='plot_oml_consum', description="Plot iot-lab consumption OML files")
+PARSER.add_argument('-i', '--input', dest='data', type=oml_load, required=True,
+                    help="Node consumption values")
+PARSER.add_argument('-l', '--label', dest='title', default="Node",
+                    help="Graph title")
+PARSER.add_argument('-b', '--begin', default=0, type=int, help="Sample start")
+PARSER.add_argument('-e', '--end', default=-1, type=int, help="Sample end")
+
+_PLOT = PARSER.add_argument_group('plot', "Plot selection")
+_PLOT.add_argument('-a', '--all', dest='plot', const='all',
+                   action='append_const',
+                   help="Plot power/voltage/current on one figure (default)")
+_PLOT.add_argument('-p', '--power', dest='plot', const='power',
+                   action='append_const', help="Plot power")
+_PLOT.add_argument('-v', '--voltage', dest='plot', const='voltage',
+                   action='append_const', help="Plot voltage")
+_PLOT.add_argument('-c', '--current', dest='plot', const='current',
+                   action='append_const', help="Plot current")
+_PLOT.add_argument('-t', '--time', dest='plot', const='time',
+                   action='append_const', help="Plot time verification")
+
+
+def consumption_plot(data, title, selection):
+    """ Plot consumption values according to selection
+
+    :param data: numpy array returned by oml_read
+    :param title: Subplots title base
+    :param selection: with values in
+        'power', 'voltage', 'current': plot on different windows
+        'all': plot all three on the same window
+        'time': plot time verification
+    """
+
+    # Single selection of 'p/v/c'
+    for value in ('power', 'voltage', 'current'):
+        if value in selection:
+            oml_plot(data, title, [MEASURES_D['value']])
+
+    # Plot all on the same window
+    if 'all' in selection:
+        oml_plot(data, title, MEASURES_D.values())
+
+    # Clock verification
+    if 'time' in selection:
+        common.oml_plot_clock(data)
+
+    plt.tight_layout()
+    plt.show()
 
 
 def oml_plot(data, title, meas_tuples):
@@ -81,74 +135,14 @@ def oml_plot(data, title, meas_tuples):
         common.plot(data, _title, meas.name, meas.label)
 
 
-def consumption_plot(data, title, options):
-    """ Plot consumption values according to options """
-
-    if '-p' in options:
-        oml_plot(data, title, [MEASURES_D['power']])
-    if "-v" in options:
-        oml_plot(data, title, [MEASURES_D['voltage']])
-    if "-c" in options:
-        oml_plot(data, title, [MEASURES_D['current']])
-
-    # All Plot on the same window
-    if "-a" in options:
-        oml_plot(data, title, MEASURES_D.values())
-
-    # Clock verification
-    if "-t" in options:
-        common.oml_plot_clock(data)
-
-    plt.tight_layout()
-    plt.show()
-
-
-def main():  # pylint:disable=too-many-branches
+def main():
     """ Main command """
-    options = []
-    filename = ""
-    try:
-        opts, _ = getopt.getopt(sys.argv[1:], "i:htpcvab:e:l:",
-                                ["input=", "help", "time", "power", "current",
-                                 "voltage", "all", "begin=", "end=", "label="])
-    except getopt.GetoptError:
-        usage()
-        sys.exit(2)
-
-    s_beg = 0
-    s_end = -1
-    title = "Node"
-    for opt, arg in opts:
-        if opt in ("-i", "--input"):
-            filename = arg
-        elif opt in ("-l", "--label"):
-            title = arg
-        elif opt in ("-b", "--begin"):
-            s_beg = int(arg)
-        elif opt in ("-e", "--end"):
-            s_end = int(arg)
-        elif opt in ("-t", "--time"):
-            options.append("-t")
-        elif opt in ("-p", "--power"):
-            options.append("-p")
-        elif opt in ("-c", "--current"):
-            options.append("-c")
-        elif opt in ("-v", "--voltage"):
-            options.append('-v')
-        elif opt in ("-a", "--all"):
-            options.append("-a")
-        else:  # opt in ("-h", "--help"):
-            usage()
-            sys.exit()
-
-    if len(filename) == 0:
-        usage()
-        sys.exit(2)
-
-    # Load file
-    data = oml_load(filename, s_beg, s_end)
-
-    consumption_plot(data, title, options)
+    opts = PARSER.parse_args()
+    # default to plot all
+    selection = opts.plot or ('all')
+    # select samples
+    data = opts.data[opts.begin:opts.end]
+    consumption_plot(data, opts.title, selection)
 
 
 if __name__ == "__main__":
