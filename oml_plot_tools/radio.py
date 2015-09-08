@@ -21,24 +21,32 @@
 # knowledge of the CeCILL license and that you accept its terms.
 
 
-""" plot_oml_radio.py
+"""
+usage: plot_oml_radio [-h] -i DATA [-l TITLE] [-b BEGIN] [-e END] [-a] [-p]
+                      [-t]
 
-plot oml filename [-tbeaplh] -i <filename> or --input=<filename>
+Plot iot-lab radio OML files
 
-for time verification --time or -t
-for begin sample --begin=<sample_beg> or -b <sample_beg>
-for end sample --end=<sample_end> or -e <sample_end>
-for label title plot --label=<title> or -l <title>
-for plot in one window --all or -a
-for plot in separate windows --plot or -p
-for help use --help or -h
+optional arguments:
+  -h, --help            show this help message and exit
+  -i DATA, --input DATA
+                        Node radio values
+  -l TITLE, --label TITLE
+                        Graph title
+  -b BEGIN, --begin BEGIN
+                        Sample start
+  -e END, --end END     Sample end
+
+plot:
+  Plot selection
+
+  -a, --all             Plot all channels in one window (default)
+  -p, --plot            Plot channels in different windows
+  -t, --time            Plot time verification
 """
 
-# disabling pylint errors 'E1101' no-member, false positive from pylint
-# pylint:disable=I0011,E1101
 
-import sys
-import getopt
+import argparse
 import matplotlib.pyplot as plt
 from . import common
 
@@ -48,11 +56,54 @@ MEASURES_D = common.measures_dict(
 )
 
 
-def oml_load(filename, s_beg=0, s_end=-1):
+def oml_load(filename):
     """ Load radio oml file """
     data = common.oml_load(filename, 'radio', MEASURES_D.values())
-    data = data[s_beg:s_end]
     return data
+
+
+PARSER = argparse.ArgumentParser(
+    prog='plot_oml_radio', description="Plot iot-lab radio OML files")
+PARSER.add_argument('-i', '--input', dest='data', type=oml_load, required=True,
+                    help="Node radio values")
+PARSER.add_argument('-l', '--label', dest='title', default="Node",
+                    help="Graph title")
+PARSER.add_argument('-b', '--begin', default=0, type=int, help="Sample start")
+PARSER.add_argument('-e', '--end', default=-1, type=int, help="Sample end")
+
+_PLOT = PARSER.add_argument_group('plot', "Plot selection")
+_PLOT.add_argument('-a', '--all', dest='plot', const='joined',
+                   action='append_const',
+                   help="Plot all channels in one window (default)")
+_PLOT.add_argument('-p', '--plot', dest='plot', const='separated',
+                   action='append_const',
+                   help="Plot channels in different windows")
+_PLOT.add_argument('-t', '--time', dest='plot', const='time',
+                   action='append_const', help="Plot time verification")
+
+
+def radio_plot(data, title, selection):
+    """ Plot radio values according to selection
+
+    :param data: numpy array returnel by oml_read
+    :param title: Subplots title base
+    :param selection: with values in
+        'joined': plot on the same window
+        'seperated': plot on different windows
+        'time': plot time verification
+    """
+
+    if 'joined' in selection:
+        oml_plot_rssi(data, title)
+    if 'seperated' in selection:
+        oml_plot_rssi(data, title, seperated=True)
+
+    # Clock verification
+    if 'time' in selection:
+        common.oml_plot_clock(data)
+
+    plt.tight_layout()
+    plt.show()
 
 
 def list_channels(data):
@@ -96,66 +147,14 @@ def oml_plot_rssi(data, title, seperated=False):
         common.plot(cdata, _title, meas.name, meas.label)
 
 
-def usage():
-    """ Usage command print """
-    print __doc__
-
-
-def main():  # pylint:disable=R0912
-    """ Main command
-    """
-    options = []
-    filename = ""
-    try:
-        opts, _ = getopt.getopt(sys.argv[1:], "i:htapb:e:l:",
-                                ["input=", "help", "time", "all", "plot",
-                                 "begin=", "end=", "label="])
-    except getopt.GetoptError:
-        usage()
-        sys.exit(2)
-
-    s_beg = 0
-    s_end = -1
-    title = ""
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            usage()
-            sys.exit()
-        elif opt in ("-i", "--input"):
-            filename = arg
-        elif opt in ("-l", "--label"):
-            title = arg
-        elif opt in ("-t", "--time"):
-            options.append("-t")
-        elif opt in ("-b", "--begin"):
-            s_beg = int(arg)
-        elif opt in ("-e", "--end"):
-            s_end = int(arg)
-        elif opt in ("-a", "--all"):
-            options.append("-a")
-        elif opt in ("-p", "--plot"):
-            options.append("-p")
-
-    if len(filename) == 0:
-        usage()
-        sys.exit(2)
-
-    # Load file
-    data = oml_load(filename, s_beg, s_end)
-
-    # Plot in a single window
-    if '-a' in options:
-        oml_plot_rssi(data, title)
-    # Plot in several windows
-    if '-p' in options:
-        oml_plot_rssi(data, title, seperated=True)
-
-    # Clock verification
-    if '-t' in options:
-        common.oml_plot_clock(data)
-
-    plt.tight_layout()
-    plt.show()
+def main():
+    """ Main command """
+    opts = PARSER.parse_args()
+    # default to plot all
+    selection = opts.plot or ('joined')
+    # select samples
+    data = opts.data[opts.begin:opts.end]
+    radio_plot(data, opts.title, selection)
 
 
 if __name__ == "__main__":
