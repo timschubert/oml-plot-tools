@@ -34,7 +34,7 @@ class TestTrajectory(unittest.TestCase):
         circuit_file = test_file_path('examples', 'Jhall_w.json')
 
         self.data = traj.oml_load(robot_file)
-        self.decos, self.img_map = traj.maps_load(map_file)
+        self.img_map, self.decos = traj.maps_load(map_file)
         self.circuit = traj.circuit_load(circuit_file)
         self.title = "Robot"
 
