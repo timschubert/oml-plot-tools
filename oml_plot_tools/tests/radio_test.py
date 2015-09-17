@@ -43,7 +43,7 @@ class TestRadio(unittest.TestCase):
         # multiple images are printed but only last one is kept
         ref_img = test_file_path('examples', 'radio_seperated_last.png')
         radio.oml_plot_rssi(self.data, self.title, seperated=True)
-        utest_plot_and_compare(self, ref_img, 27)
+        utest_plot_and_compare(self, ref_img, 28)
 
     def test_plot_clock(self):
         ref_img = test_file_path('examples', 'radio_clock.png')
