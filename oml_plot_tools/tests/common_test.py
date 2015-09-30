@@ -53,7 +53,7 @@ class TestCommon(unittest.TestCase):
         expected = [(12345.6789, 'consumption', 1, 12345, 678900, 1., 2., 3.),
                     (12346.6789, 'consumption', 2, 12346, 678900, 1., 2., 3.)]
         self.assertEqual(expected, ret.tolist())
-        self.assertIsInstance(ret, numpy.ndarray)
+        self.assertTrue(isinstance(ret, numpy.ndarray))
 
     def test_oml_invalid(self):
 

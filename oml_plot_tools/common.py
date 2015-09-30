@@ -27,7 +27,12 @@
 
 import numpy
 import matplotlib.pyplot as plt
-from collections import namedtuple, OrderedDict
+from collections import namedtuple
+try:
+    # E0611: no name in module
+    from collections import OrderedDict  # pylint:disable=import-error,E0611
+except ImportError:  # pragma: no cover
+    from ordereddict import OrderedDict  # pylint:disable=import-error
 
 OML_HEADER_LEN = 9
 

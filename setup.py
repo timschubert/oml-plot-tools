@@ -20,6 +20,7 @@
 # The fact that you are presently reading this means that you have had
 # knowledge of the CeCILL license and that you accept its terms.
 
+import sys
 import os
 from setuptools import setup, find_packages
 
@@ -44,6 +45,11 @@ def get_version(package):
 
 SCRIPTS = ['plot_oml_consum', 'plot_oml_radio', 'plot_oml_traj']
 
+INSTALL_REQUIRES = ['argparse', 'numpy', 'matplotlib', 'Pillow']
+if sys.version_info[0:2] == (2, 6):
+    # OrderedDict added in python2.7
+    INSTALL_REQUIRES.append('ordereddict')
+
 
 setup(
     name=PACKAGE,
@@ -63,5 +69,5 @@ setup(
                  'Intended Audience :: End Users/Desktop',
                  'Environment :: Console',
                  'Topic :: Utilities', ],
-    install_requires=['argparse', 'numpy', 'matplotlib', 'Pillow'],
+    install_requires=INSTALL_REQUIRES,
 )

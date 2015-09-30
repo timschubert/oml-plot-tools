@@ -98,7 +98,7 @@ def utest_plot_and_compare(testcase, ref_img, threshold=0.0):
 
     msg = '%s != %s: Root-mean-square == %f > %f' % (ref_img, tmp_img,
                                                      rms, threshold)
-    testcase.assertLessEqual(rms, threshold, msg=msg)
+    testcase.assertTrue(rms <= threshold, msg=msg)
 
     # Cleanup on success
     os.remove(tmp_img)
