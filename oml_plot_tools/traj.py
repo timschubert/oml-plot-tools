@@ -22,8 +22,9 @@
 
 
 """
-usage: plot_oml_traj [-h] [-i DATA] [-c CIRCUIT] [-m MAP_INFOS] [-l TITLE]
-                     [-b BEGIN] [-e END] [-t] [-a] [-ti]
+usage: plot_oml_traj [-h] [-i DATA] [--circuit-file CIRCUIT]
+                     [--maps-file MAP_INFOS] [-l TITLE] [-b BEGIN] [-e END]
+                     [-t] [-a] [-ti]
 
 Plot iot-lab trajectory oml files
 
@@ -31,9 +32,9 @@ optional arguments:
   -h, --help            show this help message and exit
   -i DATA, --input DATA
                         Robot trajectory values
-  -c CIRCUIT, --circuit CIRCUIT
+  --circuit-file CIRCUIT
                         Robot circuit file
-  -m MAP_INFOS, --maps MAP_INFOS
+  --maps-file MAP_INFOS
                         Map and elements
   -l TITLE, --label TITLE
                         Graph title
@@ -188,9 +189,9 @@ PARSER = argparse.ArgumentParser(
     prog='plot_oml_traj', description="Plot iot-lab trajectory oml files")
 PARSER.add_argument('-i', '--input', dest='data', type=oml_load,
                     help="Robot trajectory values")
-PARSER.add_argument('-c', '--circuit', dest='circuit', type=circuit_load,
+PARSER.add_argument('--circuit-file', dest='circuit', type=circuit_load,
                     help="Robot circuit file")
-PARSER.add_argument('-m', '--maps', dest='map_infos', type=maps_load,
+PARSER.add_argument('--maps-file', dest='map_infos', type=maps_load,
                     default=(None, ()), help="Map and elements")
 
 PARSER.add_argument('-l', '--label', dest='title', default="Robot",
