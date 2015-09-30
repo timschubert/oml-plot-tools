@@ -139,8 +139,8 @@ def maps_load(filename):
     decos = []
     for ditem in data_deco:
         posx, posy = scale_with_map(ditem.x, ditem.y, sitemap)
-        deco = ditem._replace(x=posx, y=posy)
-        decos.append(deco)
+        dec = ditem._replace(x=posx, y=posy)  # pylint:disable=protected-access
+        decos.append(dec)
 
     return sitemap, decos
 
