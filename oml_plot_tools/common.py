@@ -106,6 +106,8 @@ def oml_plot_clock(data, title='Clock time verification'):
     plt.grid()
     plt.plot(clock_diff)
 
+    return True
+
 
 def plot(data, title, field, ylabel, xlabel=TIMESTAMP_LABEL):
     """ Plot data """

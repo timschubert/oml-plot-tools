@@ -217,22 +217,24 @@ def trajectory_plot(data, title,  # pylint:disable=too-many-arguments
                     decos, img_map, circuit, selection):
     """ Plot trajectories infos """
 
+    plot_data = False
+
     if 'traj' in selection:
-        oml_plot_map(data, title, decos, img_map, circuit)
+        plot_data |= oml_plot_map(data, title, decos, img_map, circuit)
 
     # Figure angle initialization
     if 'angle' in selection:
-        oml_plot_angle(data, title)
+        plot_data |= oml_plot_angle(data, title)
 
     # Clock verification
     if 'time' in selection:
-        common.oml_plot_clock(data)
+        plot_data |= common.oml_plot_clock(data)
 
-    try:
+    if plot_data:
         plt.tight_layout()
-    except ValueError:
-        pass
-    plt.show()
+        plt.show()
+    else:
+        print "Nothing to plot"
 
 
 def oml_plot_angle(data, title, xlabel=common.TIMESTAMP_LABEL):
@@ -246,6 +248,7 @@ def oml_plot_angle(data, title, xlabel=common.TIMESTAMP_LABEL):
     plt.plot(data['timestamp'], data['theta'])
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
+    return True
 
 
 def _image_extent(mapinfo):
@@ -282,7 +285,7 @@ def oml_plot_map(data, title, decos, sitemap,  # pylint:disable=too-many-locals
     """
 
     if not (sitemap or decos or data or circuit):
-        return  # nothing to graph
+        return False
 
     # Figure trajectory initialization
     plt.figure()
@@ -310,7 +313,7 @@ def oml_plot_map(data, title, decos, sitemap,  # pylint:disable=too-many-locals
     # Plot actual robot trajectory
     _plot_robot_traj(data)
 
-    return
+    return True
 
 
 def _plot_circuit(circuit):
