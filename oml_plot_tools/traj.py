@@ -335,7 +335,7 @@ def main():  # pylint:disable=too-many-statements
     # default to plot traj/map
     selection = opts.plot or ('traj')
     # select samples
-    data = opts.data[opts.begin:opts.end] if opts.data else None
+    data = opts.data[opts.begin:opts.end] if opts.data is not None else None
     map_img, map_decos = opts.map_infos
 
     trajectory_plot(data, opts.title, map_decos, map_img,
