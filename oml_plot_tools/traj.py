@@ -123,7 +123,7 @@ def maps_load(filename):
 
     # Search if there is a map and split with other elements (data_deco)
     sitemap = None
-    data_deco = []
+    decos = []
 
     for row in rows:
         # float conversion for rows 2 to -1
@@ -134,14 +134,7 @@ def maps_load(filename):
             row[1] = os.path.join(map_dir, row[1])
             sitemap = Map(*row)
         else:  # firts column is marker for printing
-            data_deco.append(Deco(*row))
-
-    # Rescale, noop if map is None
-    decos = []
-    for ditem in data_deco:
-        posx, posy = scale_with_map(ditem.x, ditem.y, sitemap)
-        dec = ditem._replace(x=posx, y=posy)  # pylint:disable=protected-access
-        decos.append(dec)
+            decos.append(Deco(*row))
 
     return sitemap, decos
 
@@ -230,24 +223,6 @@ def trajectory_plot(data, title,  # pylint:disable=too-many-arguments
     plt.show()
 
 
-def scale_with_map(posx, posy, sitemap=None):
-    """ Scale `posx` and `posy` with `sitemap` scaling informations """
-    if sitemap is None:
-        return posx, posy
-    scaled_x = (posx - sitemap.offsetx) / sitemap.ratio
-    scaled_y = sitemap.sizey - (posy - sitemap.offsety) / sitemap.ratio
-    return scaled_x, scaled_y
-
-
-def scale_points_with_map(coordinates, sitemap):
-    """ Scale circuit coordinates with `sitemap` scaling informations """
-    checkpoints = []
-    for coord in coordinates:
-        point = scale_with_map(coord['x'], coord['y'], sitemap)
-        checkpoints.append(point)
-    return checkpoints
-
-
 def oml_plot_angle(data, title, xlabel=common.TIMESTAMP_LABEL):
     """ Plot data 'angel' field """
     ylabel = MEASURES_D['theta'].label
@@ -259,6 +234,18 @@ def oml_plot_angle(data, title, xlabel=common.TIMESTAMP_LABEL):
     plt.plot(data['timestamp'], data['theta'])
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
+
+
+def _image_extent(mapinfo):
+    """ Image 'imshow' extent values
+    Place image in the robot coordinates """
+    left = mapinfo.offsetx
+    right = mapinfo.offsetx + mapinfo.sizex * mapinfo.ratio
+
+    bottom = mapinfo.offsety
+    top = mapinfo.offsety + mapinfo.sizey * mapinfo.ratio
+
+    return (left, right, bottom, top)
 
 
 def oml_plot_map(data, title, decos, sitemap,  # pylint:disable=too-many-locals
@@ -296,8 +283,9 @@ def oml_plot_map(data, title, decos, sitemap,  # pylint:disable=too-many-locals
         except IOError as err:
             sys.stderr.write("Cannot open image map file:\n{0}\n".format(err))
             sys.exit(2)
+        extent = _image_extent(sitemap)
         arr = np.asarray(image)
-        plt.imshow(arr, cmap=cm.Greys_r)
+        plt.imshow(arr, cmap=cm.Greys_r, aspect='equal', extent=extent)
 
     # Plot elements for decoration
     for deco in decos:
@@ -306,25 +294,22 @@ def oml_plot_map(data, title, decos, sitemap,  # pylint:disable=too-many-locals
 
     # Plot robot trajectory
     if data is not None:
-        data_x, data_y = scale_with_map(data['x'], data['y'], sitemap)
-        unit = 'm' if sitemap else 'pixels'  # scaled or not
-
-        plt.plot(data_x, data_y)
-        plt.xlabel('X (%s)' % unit)
-        plt.ylabel('Y (%s)' % unit)
+        plt.plot(data['x'], data['y'])
+        plt.xlabel('X (m)')
+        plt.ylabel('Y (m)')
 
     # Plot circuit
     if circuit is not None:
-        checkpoints = scale_points_with_map(circuit['coordinates'], sitemap)
+        coords_x = [c['x'] for c in circuit['coordinates']]
+        coords_y = [c['y'] for c in circuit['coordinates']]
+        coords = (coords_x, coords_y)
 
-        checkpoint_lines = patches.Polygon(checkpoints, linestyle='dashed',
+        checkpoint_lines = patches.Polygon(zip(*coords), linestyle='dashed',
                                            linewidth=2, edgecolor='red',
                                            fill=False)
         a_x = circuit_fig.add_subplot(111)
         a_x.add_patch(checkpoint_lines)
-        coord_x = [c[0] for c in checkpoints]
-        coord_y = [c[1] for c in checkpoints]
-        plt.plot(coord_x, coord_y, 'ro')
+        plt.plot(coords_x, coords_y, 'ro')
 
     return
 
