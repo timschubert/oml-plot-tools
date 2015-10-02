@@ -305,27 +305,41 @@ def oml_plot_map(data, title, decos, sitemap,  # pylint:disable=too-many-locals
         plt.scatter(deco.x, deco.y, marker=deco.marker,
                     color=deco.color, s=deco.size)
 
-    # Plot robot trajectory
-    if data is not None:
-        plt.plot(data['x'], data['y'])
-        plt.xlabel('X (m)')
-        plt.ylabel('Y (m)')
-
-    # Plot circuit
-    if circuit is not None:
-        coords_x = [c['x'] for c in circuit['coordinates']]
-        coords_y = [c['y'] for c in circuit['coordinates']]
-        coords = (coords_x, coords_y)
-
-        # Get edges between checkpoints
-        edges = patches.Polygon(zip(*coords), **CIRCUIT_EDGE_PLT)
-
-        # Plot
-        a_x = plt.gcf().add_subplot(111)
-        a_x.add_patch(edges)
-        plt.plot(*coords, **CIRCUIT_POINT_PLT)
+    # Plot theorical circuit
+    _plot_circuit(circuit)
+    # Plot actual robot trajectory
+    _plot_robot_traj(data)
 
     return
+
+
+def _plot_circuit(circuit):
+    """ Plot circuit, scaled to map if available"""
+    if circuit is None:
+        return
+
+    # Get coordinates
+    coords_x = [c['x'] for c in circuit['coordinates']]
+    coords_y = [c['y'] for c in circuit['coordinates']]
+    coords = (coords_x, coords_y)
+
+    # Get edges between checkpoints
+    edges = patches.Polygon(zip(*coords), **CIRCUIT_EDGE_PLT)
+
+    # Plot
+    a_x = plt.gcf().add_subplot(111)
+    a_x.add_patch(edges)
+    plt.plot(*coords, **CIRCUIT_POINT_PLT)
+
+
+def _plot_robot_traj(robot_traj):
+    """ Plot robot trajectory """
+    if robot_traj is None:
+        return
+
+    plt.plot(robot_traj['x'], robot_traj['y'])
+    plt.xlabel('X (m)')
+    plt.ylabel('Y (m)')
 
 
 def main():  # pylint:disable=too-many-statements
