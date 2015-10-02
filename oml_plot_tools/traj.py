@@ -73,6 +73,18 @@ import json
 import matplotlib.patches as patches
 
 
+CIRCUIT_EDGE_PLT = {
+    'linestyle': 'dashed',
+    'linewidth': 2,
+    'edgecolor': 'red',
+    'fill': False,
+}
+CIRCUIT_POINT_PLT = {
+    'marker': 'o',
+    'color': 'red',
+}
+
+
 MEASURES_D = common.measures_dict(
     ('x', float, 'X'),
     ('y', float, 'Y'),
@@ -271,8 +283,9 @@ def oml_plot_map(data, title, decos, sitemap,  # pylint:disable=too-many-locals
 
     if not (sitemap or decos or data or circuit):
         return  # nothing to graph
+
     # Figure trajectory initialization
-    circuit_fig = plt.figure()
+    plt.figure()
     plt.title(title + ' trajectory')
     plt.grid()
 
@@ -304,12 +317,13 @@ def oml_plot_map(data, title, decos, sitemap,  # pylint:disable=too-many-locals
         coords_y = [c['y'] for c in circuit['coordinates']]
         coords = (coords_x, coords_y)
 
-        checkpoint_lines = patches.Polygon(zip(*coords), linestyle='dashed',
-                                           linewidth=2, edgecolor='red',
-                                           fill=False)
-        a_x = circuit_fig.add_subplot(111)
-        a_x.add_patch(checkpoint_lines)
-        plt.plot(coords_x, coords_y, 'ro')
+        # Get edges between checkpoints
+        edges = patches.Polygon(zip(*coords), **CIRCUIT_EDGE_PLT)
+
+        # Plot
+        a_x = plt.gcf().add_subplot(111)
+        a_x.add_patch(edges)
+        plt.plot(*coords, **CIRCUIT_POINT_PLT)
 
     return
 
