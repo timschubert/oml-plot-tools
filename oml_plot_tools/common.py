@@ -25,14 +25,15 @@
 # Issues with numpy
 # pylint:disable=no-member
 
-import numpy
-import matplotlib.pyplot as plt
 from collections import namedtuple
 try:
     # E0611: no name in module
     from collections import OrderedDict  # pylint:disable=import-error,E0611
 except ImportError:  # pragma: no cover
     from ordereddict import OrderedDict  # pylint:disable=import-error
+
+import numpy
+import matplotlib.pyplot as plt
 
 OML_HEADER_LEN = 9
 
@@ -41,7 +42,7 @@ OML_TYPES = {
     'radio': 2,
     'event': 3,
     'sniffer': 4,
-    'robot_pose': 1,  # Duplication of 'consumption' but yeah
+    'robot_pose': 10,
 }
 
 TIMESTAMP_LABEL = 'Sample Time (sec)'
@@ -79,8 +80,8 @@ def oml_load(filename, meas_type, measures):
         raise ValueError("{0}".format(err))
 
     # No empty measures
-    # if numpy.all(numpy.isnan(data)):
-    #     raise ValueError("No values, not an oml file")
+    if array_empty(data):
+        raise ValueError("No values, not an oml file")
 
     return data
 
@@ -105,6 +106,8 @@ def oml_plot_clock(data, title='Clock time verification'):
     plt.title(title)
     plt.grid()
     plt.plot(clock_diff)
+
+    return True
 
 
 def plot(data, title, field, ylabel, xlabel=TIMESTAMP_LABEL):
@@ -150,3 +153,8 @@ def _valid_oml_f(meas_type):
             return meas_type
         raise TypeError("OML file is not: %s" % meas_type)
     return _validate
+
+
+def array_empty(array):
+    """Test if array is not None or not empty."""
+    return array is None or len(array) == 0
