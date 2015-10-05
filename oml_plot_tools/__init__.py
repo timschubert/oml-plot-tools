@@ -21,4 +21,4 @@
 
 """ List of tools to display iot-lab oml generated files """
 
-__version__ = '0.4.1'
+__version__ = '0.5.0'

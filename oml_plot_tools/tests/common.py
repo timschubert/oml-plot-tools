@@ -24,10 +24,11 @@
 
 import os
 import sys
-import mock
-from cStringIO import StringIO
-import matplotlib.pyplot as plt
 import math
+from cStringIO import StringIO
+
+import mock
+import matplotlib.pyplot as plt
 from PIL import Image
 
 TEST_DIR = os.path.dirname(__file__)

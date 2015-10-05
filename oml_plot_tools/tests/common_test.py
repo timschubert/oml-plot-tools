@@ -23,13 +23,15 @@
 # pylint:disable=missing-docstring
 
 import unittest
-from oml_plot_tools import common
-from oml_plot_tools import consum
+from cStringIO import StringIO
 
 # Issues with pylint and numpy
 # pylint:disable=no-member
 import numpy
-from cStringIO import StringIO
+
+from oml_plot_tools import common
+from oml_plot_tools import consum
+
 
 MEASURE_FMT = ('{t} {type} {num} {t_s} {t_us} {measures}\n')
 HEADER = 'HEADER\n' * common.OML_HEADER_LEN
