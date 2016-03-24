@@ -32,7 +32,7 @@ optional arguments:
   -i DATA, --input DATA
                         Robot trajectory values
   --circuit-file CIRCUIT
-                        Robot circuit file
+                        Robot circuit file, '-' for stdin
   --site-map SITE       Site map
   -l TITLE, --label TITLE
                         Graph title
@@ -50,9 +50,10 @@ plot:
 
 
 import json
-import argparse
 from collections import namedtuple
 from cStringIO import StringIO
+
+import argparse
 
 # Issues with numpy and matplotlib.cm
 # pylint:disable=no-member
@@ -160,9 +161,9 @@ def circuit_load(filename):
       "points":["0", "1" ]
     }
     """
-
-    with open(filename, 'rb') as json_file:
-        return json.load(json_file)
+    # Handle '-' for stdin
+    json_file = argparse.FileType('r')(filename)
+    return json.load(json_file)
 
 
 PARSER = argparse.ArgumentParser(
@@ -170,7 +171,7 @@ PARSER = argparse.ArgumentParser(
 PARSER.add_argument('-i', '--input', dest='data', type=oml_load,
                     help="Robot trajectory values")
 PARSER.add_argument('--circuit-file', dest='circuit', type=circuit_load,
-                    help="Robot circuit file")
+                    help="Robot circuit file, '-' for stdin")
 PARSER.add_argument('--site-map', metavar='SITE', dest='mapinfo',
                     type=get_site_map, help="Site map")
 
