@@ -46,7 +46,7 @@ def get_version(package):
 SCRIPTS = ['plot_oml_consum', 'plot_oml_radio', 'plot_oml_traj']
 
 INSTALL_REQUIRES = ['argparse', 'numpy', 'matplotlib', 'Pillow']
-INSTALL_REQUIRES += ['iotlabcli>=2.0.0', 'pyxdg']
+INSTALL_REQUIRES += ['iotlabcli>=2.0.0']
 if sys.version_info[0:2] == (2, 6):
     # OrderedDict added in python2.7
     INSTALL_REQUIRES.append('ordereddict')

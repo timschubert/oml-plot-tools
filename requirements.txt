@@ -1,0 +1,2 @@
+# Install iotlabcli from github
+git+https://github.com/iot-lab/cli-tools.git@master#egg=iotlabcli
