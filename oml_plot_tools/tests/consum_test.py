@@ -38,12 +38,12 @@ class TestConsumption(unittest.TestCase):
         ref_img = test_file_path('examples', 'consumption_all.png')
         consum.oml_plot(self.data, self.title, consum.MEASURES_D.values())
 
-        utest_plot_and_compare(self, ref_img, 101)
+        utest_plot_and_compare(self, ref_img, 150)
 
     def test_plot_current(self):
         ref_img = test_file_path('examples', 'consumption_current.png')
         consum.oml_plot(self.data, self.title, [consum.MEASURES_D['current']])
-        utest_plot_and_compare(self, ref_img, 50)
+        utest_plot_and_compare(self, ref_img, 100)
 
     def test_plot_clock(self):
         ref_img = test_file_path('examples', 'consumption_clock.png')

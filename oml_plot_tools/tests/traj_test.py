@@ -57,7 +57,7 @@ class TestTrajectory(unittest.TestCase):
     def test_plot_all(self):
         ref_img = test_file_path('examples', 'trajectory_all.png')
         traj.oml_plot_map(self.data, self.title, self.mapinfo, self.circuit)
-        utest_plot_and_compare(self, ref_img, 50)
+        utest_plot_and_compare(self, ref_img, 250)
 
     def test_plot_angle(self):
         ref_img = test_file_path('examples', 'trajectory_angle.png')
