@@ -23,7 +23,8 @@
 
 """
 usage: plot_oml_traj [-h] [-i DATA] [--circuit-file CIRCUIT] [--site-map SITE]
-                     [-l TITLE] [-b BEGIN] [-e END] [-t] [-a] [-ti]
+                     [--nodes-list ID_LIST] [-l TITLE] [-b BEGIN] [-e END]
+                     [-t] [-a] [-ti]
 
 Plot iot-lab trajectory oml files
 
@@ -34,6 +35,7 @@ optional arguments:
   --circuit-file CIRCUIT
                         Robot circuit file, '-' for stdin
   --site-map SITE       Site map
+  --nodes-list ID_LIST  nodes list
   -l TITLE, --label TITLE
                         Graph title
   -b BEGIN, --begin BEGIN
@@ -52,6 +54,7 @@ plot:
 import json
 from collections import namedtuple
 from cStringIO import StringIO
+import itertools
 
 import argparse
 
@@ -68,13 +71,21 @@ from PIL import Image
 
 from . import common
 
+import iotlabcli.parser.common
 import iotlabcli.robot
+import iotlabcli.rest
+import iotlabcli.experiment
 
 
 PACKAGE = __name__.split('.')[0]
 
 DOCK_PLT = {
     'color': 'blue',
+    'marker': 's',
+    's': 10,
+}
+NODES_PLT = {
+    'color': 'green',
     'marker': 's',
     's': 10,
 }
@@ -174,6 +185,10 @@ PARSER.add_argument('--circuit-file', dest='circuit', type=circuit_load,
                     help="Robot circuit file, '-' for stdin")
 PARSER.add_argument('--site-map', metavar='SITE', dest='mapinfo',
                     type=get_site_map, help="Site map")
+PARSER.add_argument('--nodes-list', metavar='ID_LIST', action='append',
+                    type=iotlabcli.parser.common.nodes_list_from_str,
+                    dest='nodes_list_list',
+                    help='nodes list')
 
 PARSER.add_argument('-l', '--label', dest='title', default="Robot",
                     help="Graph title")
@@ -189,13 +204,13 @@ _PLOT.add_argument('-ti', '--time', dest='plot', const='time',
                    action='append_const', help="Plot time verification")
 
 
-def trajectory_plot(data, title, mapinfo, circuit, selection):
+def trajectory_plot(data, title, mapinfo, circuit, selection, nodes=()):
     """ Plot trajectories infos """
 
     plot_data = False
 
     if 'traj' in selection:
-        plot_data |= oml_plot_map(data, title, mapinfo, circuit)
+        plot_data |= oml_plot_map(data, title, mapinfo, circuit, nodes)
 
     # Figure angle initialization
     if 'angle' in selection:
@@ -238,7 +253,7 @@ def _image_extent(mapinfo):
     return (left, right, bottom, top)
 
 
-def oml_plot_map(data, title, mapinfo, circuit=None):
+def oml_plot_map(data, title, mapinfo, circuit=None, nodes=()):
     """ Plot iot-lab oml data
 
     :param data: numpy array with robot trajectory
@@ -261,6 +276,8 @@ def oml_plot_map(data, title, mapinfo, circuit=None):
     _plot_circuit(circuit)
     # Plot actual robot trajectory
     _plot_robot_traj(data)
+
+    _plot_nodes(nodes)
 
     return True
 
@@ -301,6 +318,12 @@ def _plot_circuit(circuit):
     plt.plot(*coords, **CIRCUIT_POINT_PLT)
 
 
+def _plot_nodes(nodes_list):
+    """Plot nodes on map."""
+    for node in nodes_list:
+        plt.scatter(node['x'], node['y'], **NODES_PLT)
+
+
 def _plot_robot_traj(robot_traj):
     """ Plot robot trajectory """
     if robot_traj is None:
@@ -311,6 +334,24 @@ def _plot_robot_traj(robot_traj):
     plt.ylabel('Y (m)')
 
 
+def nodes_coordinates(nodes_list_list):
+    """Return nodes coordinates as a list for nodes_list_list."""
+
+    api = iotlabcli.rest.Api(None, None)
+    # Can't use info_experiment unauthenticated...
+    username, password = iotlabcli.get_user_credentials(None, None)
+    api = iotlabcli.Api(username, password)
+
+    # splat
+    all_nodes = iotlabcli.experiment.info_experiment(api)['items']
+    all_nodes_dict = dict(((n['network_address'], n) for n in all_nodes))
+
+    nodes_list = frozenset(itertools.chain.from_iterable(nodes_list_list))
+
+    nodes_coords_list = [all_nodes_dict[n] for n in nodes_list]
+    return nodes_coords_list
+
+
 def main():  # pylint:disable=too-many-statements
     """ Main command """
     opts = PARSER.parse_args()
@@ -319,7 +360,10 @@ def main():  # pylint:disable=too-many-statements
     # select samples
     data = opts.data[opts.begin:opts.end] if opts.data is not None else None
 
-    trajectory_plot(data, opts.title, opts.mapinfo, opts.circuit, selection)
+    nodes = nodes_coordinates(opts.nodes_list_list)
+
+    trajectory_plot(data, opts.title, opts.mapinfo, opts.circuit,
+                    selection, nodes)
 
 
 if __name__ == "__main__":
