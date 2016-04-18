@@ -24,12 +24,16 @@
 import unittest
 import json
 
-from .common import utest_help_as_doc, utest_plot_and_compare, test_file_path
+import mock
+
+from .common import (utest_help_as_doc, utest_plot_and_compare,
+                     test_file_path, assert_called_with_nparray)
+
 from .. import traj, common
 
 
-def maps_load(site):
-    """Load given site map and retern mapinfo."""
+def robot_get_map(site):
+    """Simulate robot_get_map using examples files."""
     map_cfg = {}
 
     with open(test_file_path('examples', '%s-iotlab.png' % site), 'rb') as _fd:
@@ -41,10 +45,16 @@ def maps_load(site):
     with open(test_file_path('examples', '%s-dockconfig.json' % site)) as _fd:
         map_cfg['dock'] = json.load(_fd)
 
+    return map_cfg
+
+
+def maps_load(site):
+    """Load given site map and retern mapinfo."""
+    map_cfg = robot_get_map(site)
     return traj._mapinfo_from_cfg(map_cfg)  # pylint:disable=protected-access
 
 
-class TestTrajectory(unittest.TestCase):
+class TestTrajectoryOmlPlot(unittest.TestCase):
     def setUp(self):
         robot_file = test_file_path('examples', 'robot.oml')
         circuit_file = test_file_path('examples', 'Jhall_w.json')
@@ -59,6 +69,20 @@ class TestTrajectory(unittest.TestCase):
         traj.oml_plot_map(self.data, self.title, self.mapinfo, self.circuit)
         utest_plot_and_compare(self, ref_img, 250)
 
+    def test_plot_traj_only(self):
+        ref_img = test_file_path('examples', 'trajectory_only.png')
+        traj.oml_plot_map(self.data, self.title, None, None)
+        utest_plot_and_compare(self, ref_img, 50)
+
+    def test_plot_traj_circuit(self):
+        ref_img = test_file_path('examples', 'trajectory_circuit.png')
+        traj.oml_plot_map(None, self.title, None, self.circuit)
+        utest_plot_and_compare(self, ref_img, 50)
+
+    def test_plot_traj_nothing(self):
+        ret = traj.oml_plot_map(None, None, None, None)
+        self.assertFalse(ret)
+
     def test_plot_angle(self):
         ref_img = test_file_path('examples', 'trajectory_angle.png')
         traj.oml_plot_angle(self.data, self.title)
@@ -68,6 +92,81 @@ class TestTrajectory(unittest.TestCase):
         ref_img = test_file_path('examples', 'trajectory_clock.png')
         common.oml_plot_clock(self.data)
         utest_plot_and_compare(self, ref_img, 100)
+
+
+class TestTrajectory(unittest.TestCase):
+
+    def setUp(self):
+        meas_file = test_file_path('examples', 'robot.oml')
+        self.data = traj.oml_load(meas_file)[0:1]
+
+        self.title = 'TITLE_TESTS'
+        self.args = ['plot_oml_consum',
+                     '-i', meas_file, '--begin', '0', '--end', '1',
+                     '-l', self.title]
+
+        self.oml_plot_map = mock.patch('oml_plot_tools.traj'
+                                       '.oml_plot_map').start()
+        self.oml_plot_map.return_value = False
+        self.oml_plot_angle = mock.patch('oml_plot_tools.traj'
+                                         '.oml_plot_angle').start()
+        self.oml_plot_angle.return_value = False
+        self.oml_plot_clock = mock.patch('oml_plot_tools.traj'
+                                         '.common.oml_plot_clock').start()
+        self.oml_plot_clock.return_value = False
+
+        self.plot_show = mock.patch('oml_plot_tools.traj'
+                                    '.common.plot_show').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def traj_main(self, *args):
+        """Call traj main with given additional args."""
+        with mock.patch('sys.argv', list(self.args) + list(args)):
+            traj.main()
+
+    def test_plot_traj(self):
+        self.oml_plot_map.return_value = True
+        self.traj_main('--traj')
+        assert_called_with_nparray(self.oml_plot_map, self.data, self.title,
+                                   None, None)
+        self.assertFalse(self.oml_plot_angle.called)
+        self.assertFalse(self.oml_plot_clock.called)
+        self.assertTrue(self.plot_show.called)
+
+    def test_plot_angle(self):
+        self.oml_plot_angle.return_value = True
+        self.traj_main('--angle')
+        self.assertFalse(self.oml_plot_map.called)
+        assert_called_with_nparray(self.oml_plot_angle, self.data, self.title)
+        self.assertFalse(self.oml_plot_clock.called)
+        self.assertTrue(self.plot_show.called)
+
+    def test_plot_clock(self):
+        self.oml_plot_clock.return_value = True
+        self.traj_main('--time')
+        self.assertFalse(self.oml_plot_map.called)
+        self.assertFalse(self.oml_plot_angle.called)
+        assert_called_with_nparray(self.oml_plot_clock, self.data)
+        self.assertTrue(self.plot_show.called)
+
+    def test_plot_nothing(self):
+        # Traj requested but no data
+        self.oml_plot_map.return_value = False
+        self.args = ['plot_oml_consum']
+        self.traj_main('--traj')
+
+        assert_called_with_nparray(self.oml_plot_map, None, 'Robot',
+                                   None, None)
+        self.assertFalse(self.oml_plot_angle.called)
+        self.assertFalse(self.oml_plot_clock.called)
+
+    @mock.patch('iotlabcli.robot.robot_get_map', robot_get_map)
+    def test_plot_mapinfo(self):
+        self.args = ['plot_oml_consum']
+        self.traj_main('--site-map', 'grenoble')
+        self.assertTrue(self.oml_plot_map.called)
 
 
 class TestDoc(unittest.TestCase):

@@ -103,6 +103,12 @@ MapInfo = namedtuple('MapInfo', ['image', 'ratio', 'offsetx', 'offsety',
                                  'docks'])
 Dock = namedtuple('Dock', ['x', 'y', 'theta'])
 
+# Selection variables
+_TITLE = 'Robot'
+_TRAJ = 'traj'
+_ANGLE = 'angle'
+_TIME = 'time'
+
 
 def oml_load(filename):
     """ Load consumption oml file """
@@ -175,17 +181,17 @@ PARSER.add_argument('--circuit-file', dest='circuit', type=circuit_load,
 PARSER.add_argument('--site-map', metavar='SITE', dest='mapinfo',
                     type=get_site_map, help="Site map")
 
-PARSER.add_argument('-l', '--label', dest='title', default="Robot",
+PARSER.add_argument('-l', '--label', dest='title', default=_TITLE,
                     help="Graph title")
 PARSER.add_argument('-b', '--begin', default=0, type=int, help="Sample start")
 PARSER.add_argument('-e', '--end', default=-1, type=int, help="Sample end")
 
 _PLOT = PARSER.add_argument_group('plot', "Plot selection")
-_PLOT.add_argument('-t', '--traj', dest='plot', const='traj',
+_PLOT.add_argument('-t', '--traj', dest='plot', const=_TRAJ,
                    action='append_const', help="Plot robot trajectory")
-_PLOT.add_argument('-a', '--angle', dest='plot', const='angle',
+_PLOT.add_argument('-a', '--angle', dest='plot', const=_ANGLE,
                    action='append_const', help="Plot robot angle")
-_PLOT.add_argument('-ti', '--time', dest='plot', const='time',
+_PLOT.add_argument('-ti', '--time', dest='plot', const=_TIME,
                    action='append_const', help="Plot time verification")
 
 
@@ -194,15 +200,15 @@ def trajectory_plot(data, title, mapinfo, circuit, selection):
 
     plot_data = False
 
-    if 'traj' in selection:
+    if _TRAJ in selection:
         plot_data |= oml_plot_map(data, title, mapinfo, circuit)
 
     # Figure angle initialization
-    if 'angle' in selection:
+    if _ANGLE in selection:
         plot_data |= oml_plot_angle(data, title)
 
     # Clock verification
-    if 'time' in selection:
+    if _TIME in selection:
         plot_data |= common.oml_plot_clock(data)
 
     if plot_data:

@@ -130,7 +130,7 @@ def oml_plot(data, title, meas_tuples):
 
     :param data: numpy array returned by oml_read
     :param title: Subplots title base
-    :param meas_tuples: numpy.dtypesplots seperated on different windows
+    :param meas_tuples: numpy.dtypesplots separated on different windows
     """
 
     nbplots = len(meas_tuples)
