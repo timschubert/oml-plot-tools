@@ -253,6 +253,7 @@ def oml_plot_map(data, title, mapinfo, circuit=None):
     plt.figure()
     plt.title(title + ' trajectory')
     plt.grid()
+    plt.axes().set_aspect('equal', 'datalim')
 
     # Map and dock background
     _plot_mapinfo(mapinfo)
