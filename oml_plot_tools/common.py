@@ -79,8 +79,12 @@ def oml_load(filename, meas_type, measures):
     except TypeError as err:
         raise ValueError("{0}".format(err))
 
+    # No error when only one value
+    data = numpy.atleast_1d(data)
+
     # No empty measures
-    if array_empty(data):
+    # I think not reproducible anymore with genfromtxt however.
+    if array_empty(data):  # pragma: no cover
         raise ValueError("No values, not an oml file")
 
     return data
