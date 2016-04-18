@@ -23,8 +23,8 @@
 """ Common tests functions """
 
 import os
-import sys
 import math
+import runpy
 from cStringIO import StringIO
 
 import mock
@@ -48,11 +48,12 @@ def help_main_and_doc(module, help_opt='--help'):
     help_args = [module.__name__, help_opt]
     out_msg = StringIO()
 
-    with mock.patch.object(sys, 'argv', help_args):
-        with mock.patch.object(sys, 'stderr', out_msg):
-            with mock.patch.object(sys, 'stdout', out_msg):
+    with mock.patch('sys.argv', help_args):
+        with mock.patch('sys.stderr', out_msg):
+            with mock.patch('sys.stdout', out_msg):
                 try:
-                    module.main()
+                    runpy.run_module(module.__name__,
+                                     run_name='__main__', alter_sys=True)
                 except SystemExit:
                     pass
 
