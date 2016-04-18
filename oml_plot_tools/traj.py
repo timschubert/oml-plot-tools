@@ -206,8 +206,7 @@ def trajectory_plot(data, title, mapinfo, circuit, selection):
         plot_data |= common.oml_plot_clock(data)
 
     if plot_data:
-        plt.tight_layout()
-        plt.show()
+        common.plot_show()
     else:
         print "Nothing to plot"
 

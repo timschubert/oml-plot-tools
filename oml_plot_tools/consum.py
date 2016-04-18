@@ -53,10 +53,19 @@ import matplotlib.pyplot as plt
 from . import common
 
 
+# Selection variables
+_POWER = 'power'
+_VOLTAGE = 'voltage'
+_CURRENT = 'current'
+_ALL = 'all'
+_TIME = 'time'
+_TITLE = 'Node'
+
+
 MEASURES_D = common.measures_dict(
-    ('power', float, 'Power (W)'),
-    ('voltage', float, 'Voltage (V)'),
-    ('current', float, 'Current (A)'),
+    (_POWER, float, 'Power (W)'),
+    (_VOLTAGE, float, 'Voltage (V)'),
+    (_CURRENT, float, 'Current (A)'),
 )
 
 
@@ -70,22 +79,22 @@ PARSER = argparse.ArgumentParser(
     prog='plot_oml_consum', description="Plot iot-lab consumption OML files")
 PARSER.add_argument('-i', '--input', dest='data', type=oml_load, required=True,
                     help="Node consumption values")
-PARSER.add_argument('-l', '--label', dest='title', default="Node",
+PARSER.add_argument('-l', '--label', dest='title', default=_TITLE,
                     help="Graph title")
 PARSER.add_argument('-b', '--begin', default=0, type=int, help="Sample start")
 PARSER.add_argument('-e', '--end', default=-1, type=int, help="Sample end")
 
 _PLOT = PARSER.add_argument_group('plot', "Plot selection")
-_PLOT.add_argument('-a', '--all', dest='plot', const='all',
+_PLOT.add_argument('-a', '--all', dest='plot', const=_ALL,
                    action='append_const',
                    help="Plot power/voltage/current on one figure (default)")
-_PLOT.add_argument('-p', '--power', dest='plot', const='power',
+_PLOT.add_argument('-p', '--power', dest='plot', const=_POWER,
                    action='append_const', help="Plot power")
-_PLOT.add_argument('-v', '--voltage', dest='plot', const='voltage',
+_PLOT.add_argument('-v', '--voltage', dest='plot', const=_VOLTAGE,
                    action='append_const', help="Plot voltage")
-_PLOT.add_argument('-c', '--current', dest='plot', const='current',
+_PLOT.add_argument('-c', '--current', dest='plot', const=_CURRENT,
                    action='append_const', help="Plot current")
-_PLOT.add_argument('-t', '--time', dest='plot', const='time',
+_PLOT.add_argument('-t', '--time', dest='plot', const=_TIME,
                    action='append_const', help="Plot time verification")
 
 
@@ -101,20 +110,19 @@ def consumption_plot(data, title, selection):
     """
 
     # Single selection of 'p/v/c'
-    for value in ('power', 'voltage', 'current'):
+    for value in (_POWER, _VOLTAGE, _CURRENT):
         if value in selection:
-            oml_plot(data, title, [MEASURES_D['value']])
+            oml_plot(data, title, [MEASURES_D[value]])
 
     # Plot all on the same window
-    if 'all' in selection:
+    if _ALL in selection:
         oml_plot(data, title, MEASURES_D.values())
 
     # Clock verification
     if 'time' in selection:
         common.oml_plot_clock(data)
 
-    plt.tight_layout()
-    plt.show()
+    common.plot_show()
 
 
 def oml_plot(data, title, meas_tuples):
@@ -139,7 +147,7 @@ def main():
     """ Main command """
     opts = PARSER.parse_args()
     # default to plot all
-    selection = opts.plot or ('all')
+    selection = opts.plot or (_ALL)
     # select samples
     data = opts.data[opts.begin:opts.end]
     consumption_plot(data, opts.title, selection)

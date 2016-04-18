@@ -23,11 +23,14 @@
 # pylint:disable=missing-docstring
 import unittest
 
-from .common import test_file_path, utest_help_as_doc, utest_plot_and_compare
-from .. import consum
+import mock
+
+from .common import (test_file_path, utest_help_as_doc,
+                     utest_plot_and_compare, assert_called_with_nparray)
+from .. import consum, common
 
 
-class TestConsumption(unittest.TestCase):
+class TestConsumptionOmlPlot(unittest.TestCase):
 
     def setUp(self):
         conso_file = test_file_path('examples', 'consumption.oml')
@@ -49,6 +52,77 @@ class TestConsumption(unittest.TestCase):
         ref_img = test_file_path('examples', 'consumption_clock.png')
         consum.common.oml_plot_clock(self.data)
         utest_plot_and_compare(self, ref_img, 50)
+
+
+class TestConsumptionPlot(unittest.TestCase):
+
+    def setUp(self):
+        meas_file = test_file_path('examples', 'consumption.oml')
+        self.data = consum.oml_load(meas_file)[0:1]
+
+        self.title = 'TITLE_TESTS'
+        self.args = ['plot_oml_consum',
+                     '-i', meas_file, '--begin', '0', '--end', '1',
+                     '-l', self.title]
+
+        self.oml_plot = mock.patch('oml_plot_tools.consum.oml_plot').start()
+        self.oml_plot_clock = mock.patch('oml_plot_tools.consum'
+                                         '.common.oml_plot_clock').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def consum_main(self, *args):
+        """Call consumption main with given additional args."""
+        with mock.patch('sys.argv', list(self.args) + list(args)):
+            consum.main()
+
+    def test_plot_selection(self):
+        # Plot one selection after the other
+        self.consum_main('-p')
+        assert_called_with_nparray(
+            self.oml_plot,
+            self.data, self.title,
+            [common.MeasureTuple('power', float, 'Power (W)')])
+
+        self.consum_main('-v')
+        assert_called_with_nparray(
+            self.oml_plot,
+            self.data, self.title,
+            [common.MeasureTuple('voltage', float, 'Voltage (V)')])
+
+        self.consum_main('-c')
+        assert_called_with_nparray(
+            self.oml_plot,
+            self.data, self.title,
+            [common.MeasureTuple('current', float, 'Current (A)')])
+
+        # Plot only once per entry
+        self.oml_plot.reset_mock()
+        self.consum_main('-c', '-v', '-p', '-p')
+        self.assertEqual(self.oml_plot.call_count, 3)
+
+    def test_plot_all(self):
+        self.consum_main('-a')
+        assert_called_with_nparray(
+            self.oml_plot,
+            self.data, self.title,
+            [common.MeasureTuple('power', float, 'Power (W)'),
+             common.MeasureTuple('voltage', float, 'Voltage (V)'),
+             common.MeasureTuple('current', float, 'Current (A)')])
+
+    def test_plot_default_all(self):
+        self.consum_main()
+        assert_called_with_nparray(
+            self.oml_plot,
+            self.data, self.title,
+            [common.MeasureTuple('power', float, 'Power (W)'),
+             common.MeasureTuple('voltage', float, 'Voltage (V)'),
+             common.MeasureTuple('current', float, 'Current (A)')])
+
+    def test_plot_time(self):
+        self.consum_main('-t')
+        assert_called_with_nparray(self.oml_plot_clock, self.data)
 
 
 class TestDoc(unittest.TestCase):

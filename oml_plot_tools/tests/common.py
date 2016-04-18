@@ -103,3 +103,23 @@ def utest_plot_and_compare(testcase, ref_img, threshold=0.0):
 
     # Cleanup on success
     os.remove(tmp_img)
+
+
+def assert_called_with_nparray(mock_function, np_array, *args):
+    """Assert mock function has been called with given np_array and arguments.
+
+    Using default mock assert_called_with failed.
+    Also using numpy comparison functions did not return expected value so use
+    'repr'
+    """
+    call_args = mock_function.call_args[0]
+
+    call_array = call_args[0]
+    call_args = call_args[1:]
+
+    # Failed to compare with '==', 'np.array_equal', or 'np.allclose'
+    got = str((str(call_array), call_args))
+    expected = str((str(np_array), args))
+    val = '%s == %s' % (got, expected)
+
+    assert (repr(call_array), call_args) == (repr(np_array), args), val

@@ -102,8 +102,7 @@ def radio_plot(data, title, selection):
     if 'time' in selection:
         common.oml_plot_clock(data)
 
-    plt.tight_layout()
-    plt.show()
+    common.plot_show()
 
 
 def list_channels(data):

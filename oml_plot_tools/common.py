@@ -119,6 +119,12 @@ def plot(data, title, field, ylabel, xlabel=TIMESTAMP_LABEL):
     plt.plot(data['timestamp'], data[field])
 
 
+def plot_show():
+    """Show image."""
+    plt.tight_layout()
+    plt.show()
+
+
 # Help functions
 
 
