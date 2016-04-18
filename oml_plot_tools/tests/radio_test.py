@@ -21,6 +21,8 @@
 
 
 # pylint:disable=missing-docstring
+# python2.6
+# pylint:disable=too-many-public-methods
 import unittest
 
 import mock
