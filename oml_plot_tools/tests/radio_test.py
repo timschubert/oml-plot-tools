@@ -21,13 +21,18 @@
 
 
 # pylint:disable=missing-docstring
+# python2.6
+# pylint:disable=too-many-public-methods
 import unittest
 
-from .common import test_file_path, utest_help_as_doc, utest_plot_and_compare
+import mock
+
+from .common import (test_file_path, utest_help_as_doc,
+                     utest_plot_and_compare, assert_called_with_nparray)
 from .. import radio
 
 
-class TestRadio(unittest.TestCase):
+class TestRadioOmlPlot(unittest.TestCase):
 
     def setUp(self):
         radio_file = test_file_path('examples', 'radio.oml')
@@ -41,14 +46,52 @@ class TestRadio(unittest.TestCase):
 
     def test_plot_current(self):
         # multiple images are printed but only last one is kept
-        ref_img = test_file_path('examples', 'radio_seperated_last.png')
-        radio.oml_plot_rssi(self.data, self.title, seperated=True)
+        ref_img = test_file_path('examples', 'radio_separated_last.png')
+        radio.oml_plot_rssi(self.data, self.title, separated=True)
         utest_plot_and_compare(self, ref_img, 50)
 
     def test_plot_clock(self):
         ref_img = test_file_path('examples', 'radio_clock.png')
         radio.common.oml_plot_clock(self.data)
         utest_plot_and_compare(self, ref_img, 50)
+
+
+class TestRadioPlot(unittest.TestCase):
+
+    def setUp(self):
+        meas_file = test_file_path('examples', 'radio.oml')
+        self.data = radio.oml_load(meas_file)[0:1]
+
+        self.title = 'TITLE_TESTS'
+        self.args = ['plot_oml_radio',
+                     '-i', meas_file, '--begin', '0', '--end', '1',
+                     '-l', self.title]
+
+        self.oml_plot_rssi = mock.patch('oml_plot_tools.radio'
+                                        '.oml_plot_rssi').start()
+        self.oml_plot_clock = mock.patch('oml_plot_tools.radio'
+                                         '.common.oml_plot_clock').start()
+
+    def tearDown(self):
+        mock.patch.stopall()
+
+    def radio_main(self, *args):
+        """Call radio main with given additional args."""
+        with mock.patch('sys.argv', list(self.args) + list(args)):
+            radio.main()
+
+    def test_plot_joined(self):
+        self.radio_main('--all')
+        assert_called_with_nparray(self.oml_plot_rssi, self.data, self.title)
+
+    def test_plot_separated(self):
+        self.radio_main('--plot')
+        assert_called_with_nparray(self.oml_plot_rssi,
+                                   self.data, self.title, separated=True)
+
+    def test_plot_time(self):
+        self.radio_main('--time')
+        assert_called_with_nparray(self.oml_plot_clock, self.data)
 
 
 class TestDoc(unittest.TestCase):

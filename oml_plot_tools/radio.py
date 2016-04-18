@@ -62,6 +62,12 @@ def oml_load(filename):
     return data
 
 
+# Selection variables
+_JOINED = 'joined'
+_SEPARATED = 'separated'
+_TIME = 'time'
+
+
 PARSER = argparse.ArgumentParser(
     prog='plot_oml_radio', description="Plot iot-lab radio OML files")
 PARSER.add_argument('-i', '--input', dest='data', type=oml_load, required=True,
@@ -72,13 +78,13 @@ PARSER.add_argument('-b', '--begin', default=0, type=int, help="Sample start")
 PARSER.add_argument('-e', '--end', default=-1, type=int, help="Sample end")
 
 _PLOT = PARSER.add_argument_group('plot', "Plot selection")
-_PLOT.add_argument('-a', '--all', dest='plot', const='joined',
+_PLOT.add_argument('-a', '--all', dest='plot', const=_JOINED,
                    action='append_const',
                    help="Plot all channels in one window (default)")
-_PLOT.add_argument('-p', '--plot', dest='plot', const='separated',
+_PLOT.add_argument('-p', '--plot', dest='plot', const=_SEPARATED,
                    action='append_const',
                    help="Plot channels in different windows")
-_PLOT.add_argument('-t', '--time', dest='plot', const='time',
+_PLOT.add_argument('-t', '--time', dest='plot', const=_TIME,
                    action='append_const', help="Plot time verification")
 
 
@@ -89,21 +95,20 @@ def radio_plot(data, title, selection):
     :param title: Subplots title base
     :param selection: with values in
         'joined': plot on the same window
-        'seperated': plot on different windows
+        'separated': plot on different windows
         'time': plot time verification
     """
 
-    if 'joined' in selection:
+    if _JOINED in selection:
         oml_plot_rssi(data, title)
-    if 'seperated' in selection:
-        oml_plot_rssi(data, title, seperated=True)
+    if _SEPARATED in selection:
+        oml_plot_rssi(data, title, separated=True)
 
     # Clock verification
-    if 'time' in selection:
+    if _TIME in selection:
         common.oml_plot_clock(data)
 
-    plt.tight_layout()
-    plt.show()
+    common.plot_show()
 
 
 def list_channels(data):
@@ -118,12 +123,12 @@ def with_channel(data, channel):
     return data[select]
 
 
-def oml_plot_rssi(data, title, seperated=False):
+def oml_plot_rssi(data, title, separated=False):
     """ Plot rssi for all channels.
 
     :param data: numpy array returned by oml_read
     :param title: Subplots title base
-    :param seperated: plots seperated on different windows
+    :param separated: plots separated on different windows
     """
 
     channels = list_channels(data)
@@ -131,7 +136,7 @@ def oml_plot_rssi(data, title, seperated=False):
     meas = MEASURES_D['rssi']
 
     # Only window for all
-    if not seperated:
+    if not separated:
         plt.figure()
 
     for num, channel in enumerate(channels, start=1):
@@ -140,7 +145,7 @@ def oml_plot_rssi(data, title, seperated=False):
         _title = '%s Channel %s' % (title, channel)
 
         # One window per plot
-        if seperated:
+        if separated:
             plt.figure()
 
         plt.subplot(nbplots, 1, num)
@@ -151,7 +156,7 @@ def main():
     """ Main command """
     opts = PARSER.parse_args()
     # default to plot all
-    selection = opts.plot or ('joined')
+    selection = opts.plot or (_JOINED)
     # select samples
     data = opts.data[opts.begin:opts.end]
     radio_plot(data, opts.title, selection)

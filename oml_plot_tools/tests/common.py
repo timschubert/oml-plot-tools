@@ -23,8 +23,8 @@
 """ Common tests functions """
 
 import os
-import sys
 import math
+import runpy
 from cStringIO import StringIO
 
 import mock
@@ -48,11 +48,12 @@ def help_main_and_doc(module, help_opt='--help'):
     help_args = [module.__name__, help_opt]
     out_msg = StringIO()
 
-    with mock.patch.object(sys, 'argv', help_args):
-        with mock.patch.object(sys, 'stderr', out_msg):
-            with mock.patch.object(sys, 'stdout', out_msg):
+    with mock.patch('sys.argv', help_args):
+        with mock.patch('sys.stderr', out_msg):
+            with mock.patch('sys.stdout', out_msg):
                 try:
-                    module.main()
+                    runpy.run_module(module.__name__,
+                                     run_name='__main__', alter_sys=True)
                 except SystemExit:
                     pass
 
@@ -103,3 +104,24 @@ def utest_plot_and_compare(testcase, ref_img, threshold=0.0):
 
     # Cleanup on success
     os.remove(tmp_img)
+
+
+def assert_called_with_nparray(mock_function, np_array, *args, **kwargs):
+    """Assert mock function has been called with given np_array and arguments.
+
+    Using default mock assert_called_with failed.
+    Also using numpy comparison functions did not return expected value so use
+    'repr'
+    """
+    call_args, call_kwargs = mock_function.call_args
+
+    call_array = call_args[0]
+    call_args = call_args[1:]
+
+    # Failed to compare with '==', 'np.array_equal', or 'np.allclose'
+    got = call_array, call_args, call_kwargs
+    expected = np_array, args, kwargs
+    assert_string = '%s == %s' % (got, expected)
+
+    assert (repr(call_array), call_args, call_kwargs) == \
+        (repr(np_array), args, kwargs), assert_string

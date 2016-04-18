@@ -57,6 +57,19 @@ class TestCommon(unittest.TestCase):
         self.assertEqual(expected, ret.tolist())
         self.assertTrue(isinstance(ret, numpy.ndarray))
 
+    def test_oml_load_only_one(self):
+        meas = '1. 2. 3.'
+        content = HEADER
+        content += MEASURE_FMT.format(t=0.1234, type=CONSO_T, num=1,
+                                      t_s=12345, t_us=678900, measures=meas)
+
+        ret = common.oml_load(StringIO(content), 'consumption',
+                              consum.MEASURES_D.values())
+
+        expected = [(12345.6789, 'consumption', 1, 12345, 678900, 1., 2., 3.)]
+        self.assertEqual(expected, ret.tolist())
+        self.assertTrue(isinstance(ret, numpy.ndarray))
+
     def test_oml_invalid(self):
 
         # invalid data
