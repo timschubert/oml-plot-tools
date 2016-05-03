@@ -187,7 +187,7 @@ PARSER.add_argument('--site-map', metavar='SITE', dest='mapinfo',
                     type=get_site_map, help="Site map")
 PARSER.add_argument('--nodes-list', metavar='ID_LIST', action='append',
                     type=iotlabcli.parser.common.nodes_list_from_str,
-                    dest='nodes_list_list',
+                    dest='nodes_list_list', default=[],
                     help='nodes list')
 
 PARSER.add_argument('-l', '--label', dest='title', default="Robot",
