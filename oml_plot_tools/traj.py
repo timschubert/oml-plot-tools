@@ -321,7 +321,13 @@ def _plot_circuit(circuit):
 def _plot_nodes(nodes_list):
     """Plot nodes on map."""
     for node in nodes_list:
-        plt.scatter(node['x'], node['y'], **NODES_PLT)
+        try:
+            x = float(node['x'])  # pylint:disable=invalid-name
+            y = float(node['y'])  # pylint:disable=invalid-name
+        except ValueError:
+            print '%s: No coordinates' % node['network_address']
+        else:
+            plt.scatter(x, y, **NODES_PLT)
 
 
 def _plot_robot_traj(robot_traj):
