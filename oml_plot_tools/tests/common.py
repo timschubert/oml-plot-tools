@@ -43,7 +43,7 @@ def help_main_and_doc(module, help_opt='--help'):
     """ Check that help message is module docstring """
 
     if not hasattr(module, 'main'):
-        return None, None
+        return None, None  # pragma: no cover
 
     help_args = [module.__name__, help_opt]
     out_msg = StringIO()

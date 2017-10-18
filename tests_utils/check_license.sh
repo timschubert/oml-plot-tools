@@ -20,6 +20,8 @@ files_list=$(echo "${files_list}" | grep -v \
     -e '.json$' \
     -e '.txt$' \
     -e '.travis.yml' \
+    -e 'codecov.yml' \
+    -e 'README.rst' \
 )
 
 # Verify that 'AUTHORS' and 'COPYING' files exist

@@ -9,4 +9,4 @@ install:
   - pip install .
 
 script:
-- tox
+- tox -e copying,cli,py27,coverage
