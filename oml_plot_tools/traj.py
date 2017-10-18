@@ -66,9 +66,9 @@ import matplotlib.patches as patches
 # or 'apt-get install python-imaging'
 from PIL import Image
 
-from . import common
-
 import iotlabcli.robot
+
+from . import common
 
 
 PACKAGE = __name__.split('.')[0]
