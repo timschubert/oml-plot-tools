@@ -58,3 +58,6 @@ target/
 
 *.swp
 cover/
+
+# Generated json files
+*.json
