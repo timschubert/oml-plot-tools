@@ -20,6 +20,7 @@
 # knowledge of the CeCILL license and that you accept its terms.
 
 
+from __future__ import print_function
 # pylint:disable=missing-docstring
 # python2.6
 # pylint:disable=too-many-public-methods

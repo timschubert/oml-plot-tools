@@ -22,6 +22,7 @@
 
 """ Common tests functions """
 
+from __future__ import print_function
 import os
 import math
 import runpy
@@ -59,8 +60,8 @@ def help_main_and_doc(module, help_opt='--help'):
 
     help_msg = out_msg.getvalue().strip()
     help_doc = module.__doc__.strip()
-    print help_msg
-    print help_doc
+    print(help_msg)
+    print(help_doc)
 
     return help_msg, help_doc
 

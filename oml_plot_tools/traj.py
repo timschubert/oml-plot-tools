@@ -49,9 +49,14 @@ plot:
 """
 
 
+from __future__ import print_function
+
 import json
 from collections import namedtuple
-from cStringIO import StringIO
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 import argparse
 
@@ -214,7 +219,7 @@ def trajectory_plot(data, title, mapinfo, circuit, selection):
     if plot_data:
         common.plot_show()
     else:
-        print "Nothing to plot"
+        print("Nothing to plot")
 
 
 def oml_plot_angle(data, title, xlabel=common.TIMESTAMP_LABEL):

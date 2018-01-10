@@ -25,6 +25,7 @@
 # Issues with numpy
 # pylint:disable=no-member
 
+from __future__ import print_function
 from collections import namedtuple
 try:
     # E0611: no name in module
@@ -97,14 +98,14 @@ def oml_plot_clock(data, title='Clock time verification'):
     time = data['timestamp']
     clock_diff = numpy.diff(time) * 1000
 
-    print 'Time from %f to %f' % (time[0], time[-1])
-    print 'NB Points      =', len(time)
-    print 'Duration    (s)=', time[-1] - time[0]
-    print 'Steptime   (ms)=', 1000 * (time[-1] - time[0]) / len(time)
-    print 'Clock mean (ms)=', numpy.mean(clock_diff)
-    print 'Clock std  (ms)=', numpy.std(clock_diff)
-    print 'Clock max  (ms)=', numpy.max(clock_diff)
-    print 'Clock min  (ms)=', numpy.min(clock_diff)
+    print('Time from %f to %f' % (time[0], time[-1]))
+    print('NB Points      =', len(time))
+    print('Duration    (s)=', time[-1] - time[0])
+    print('Steptime   (ms)=', 1000 * (time[-1] - time[0]) / len(time))
+    print('Clock mean (ms)=', numpy.mean(clock_diff))
+    print('Clock std  (ms)=', numpy.std(clock_diff))
+    print('Clock max  (ms)=', numpy.max(clock_diff))
+    print('Clock min  (ms)=', numpy.min(clock_diff))
 
     plt.figure()
     plt.title(title)
